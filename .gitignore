@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.env
+results/*.json
+results/*.csv
+results/*.md
+results/gallery/
+*.pt
+*.onnx
+data/images/
+data/labels/
