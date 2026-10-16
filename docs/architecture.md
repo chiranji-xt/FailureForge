@@ -28,11 +28,11 @@ reports (JSON/CSV/Markdown) + failure gallery
 
 ## Implemented vs planned (Day 1 status)
 
-- **Implemented (Day 1):** project foundation — packaging (`pyproject.toml`,
-  `src/` layout, version `0.1.0`), license, `.gitignore`, smoke test,
-  this documentation set, `configs/default.yaml` placeholder values.
-- **Planned (Days 2–15):** all functional modules above, to be implemented,
-  tested, and verified one stage at a time per the roadmap in `progress.md`.
+- **Implemented (Days 1–2):** project foundation plus `detector.py`
+  (`YOLODetector` inference-only wrapper, `Detections`, task gate, SHA-256
+  fingerprint) with mocked unit tests.
+- **Planned (Days 3–15):** all other functional modules above, to be
+  implemented, tested, and verified one stage at a time per `progress.md`.
 
 ## Dependency boundaries
 

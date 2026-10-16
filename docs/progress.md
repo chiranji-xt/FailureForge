@@ -26,11 +26,29 @@ They are intentionally **not** part of the Day-1 commit (left untracked) and
 will each be reviewed, tested, and verified on their scheduled day. No
 benchmark results are claimed.
 
+## Day 2 — YOLO detector wrapper (2026-10-16): DONE
+
+- [x] `src/failureforge/detector.py`: `YOLODetector` (Ultralytics, inference
+      only) + `Detections` (`boxes_xyxy`/`scores`/`classes`, pixel coords,
+      validated shapes/dtypes, valid empties) + `DetectorError`.
+- [x] Weights validation (missing → `FileNotFoundError`, directory/load
+      failure → `DetectorError`), BGR `uint8` image validation, detection-only
+      task gate (segment/pose/obb/classify rejected), SHA-256 fingerprint,
+      metadata, lazy ultralytics import (core import never requires it).
+- [x] `tests/test_detector.py`: 20 tests, fully mocked (no weights/network).
+      **20 passed** + 2 smoke = 22 passed.
+- [x] `pyproject.toml`: no change needed (`yolo` extra already declared Day 1).
+- [x] Known tree state: untracked Day-6 preview `tests/test_evaluator.py`
+      imports the old `DummyDetector` stub and fails collection; ignored for
+      now (`--ignore`), everything else in tree passes (43 passed). Day 6
+      rebuilds evaluator + its doubles/tests properly.
+
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
-- Day 2: Dataset loader and YOLO annotation validation.
-- Day 3: Detector interface and baseline evaluation.
+- Day 2: YOLO detector wrapper (inference only). ✅
+- Day 3: Dataset loader, YOLO annotation validation, baseline evaluation.
+  (Roadmap reordered: detector first so evaluation days can build on it.)
 - Day 4: Brightness and blur transformations.
 - Day 5: Rotation, scaling, occlusion, annotation correctness.
 - Day 6: Evaluation engine and metrics.
@@ -44,8 +62,8 @@ benchmark results are claimed.
 - Day 14: Documentation and reproducible demo.
 - Day 15: Fresh-environment verification and release.
 
-## Next (Day 2)
+## Next (Day 3)
 
-Implement + verify `dataset.py`: strict YOLO loading/validation with clear
-errors, summary statistics, deterministic split helper, and unit tests using
-temporary synthetic fixtures.
+Implement + verify `dataset.py` (strict YOLO loading/validation, summary
+stats, deterministic split, tests on synthetic fixtures) plus the baseline
+evaluation harness that runs `YOLODetector` over the labeled set.

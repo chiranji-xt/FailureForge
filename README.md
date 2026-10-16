@@ -4,15 +4,35 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 1)
+## Development status (Day 2)
 
-Day 1 establishes the **project foundation only**: packaging, documentation,
-research plan, smoke test, and GitHub setup. Functional modules (dataset
-loading, perturbations, inference, metrics, search, CLI) are **planned, not
-yet verified** — they land on Days 2–15 per `docs/progress.md`. The
-installation, quick-start, and CLI sections below describe the **planned**
-workflow; commands beyond `validate-data` scaffolding will fail until their
-scheduled day.
+- ✅ Day 1: project foundation (packaging, docs, smoke test).
+- ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
+  implemented, tested (20 mocked tests, no weights/network required), verified.
+- ⏳ Days 3–15 per `docs/progress.md`: dataset loading, evaluation, and search
+  are **planned, not yet verified**. The quick-start and CLI sections below
+  describe the planned workflow and will fail until their scheduled day.
+
+## YOLO detector (Day 2, inference only)
+
+Loads your existing detection checkpoint (e.g. `best.pt`) — never trains,
+never downloads. Optional dependency: `pip install -e ".[yolo]"`.
+
+```python
+import cv2
+from failureforge.detector import YOLODetector
+
+det = YOLODetector("best.pt", conf=0.25, imgsz=640, device="cpu")
+print(det.class_names, det.task, det.sha256[:12])
+
+img_bgr = cv2.imread("frame.png")          # OpenCV-style BGR uint8 (H, W, 3)
+dets = det.predict(img_bgr)                # Detections: boxes_xyxy (N,4) float32
+print(dets.boxes_xyxy, dets.scores, dets.classes)
+print(det.metadata)                        # weights, config, task, fingerprint
+```
+
+Only the `detect` task is supported; segmentation/pose/OBB checkpoints are
+rejected with an error. Tests: `pytest tests/test_detector.py tests/test_project.py -v`.
 
 ## Installation (Windows PowerShell)
 
