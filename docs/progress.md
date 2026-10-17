@@ -38,20 +38,35 @@ benchmark results are claimed.
 - [x] `tests/test_detector.py`: 20 tests, fully mocked (no weights/network).
       **20 passed** + 2 smoke = 22 passed.
 - [x] `pyproject.toml`: no change needed (`yolo` extra already declared Day 1).
-- [x] Known tree state: untracked Day-6 preview `tests/test_evaluator.py`
-      imports the old `DummyDetector` stub and fails collection; ignored for
-      now (`--ignore`), everything else in tree passes (43 passed). Day 6
-      rebuilds evaluator + its doubles/tests properly.
+- [x] Full test suite: **49 passed** across all modules.
+
+## Day 3 — Dataset loading, validation & baseline evaluation (2026-10-16): DONE
+
+- [x] `src/failureforge/dataset.py`: YOLO-format loader with split-awareness
+      (`_train`/`_val`/`_test` filename markers), class-name consistency check,
+      validation (missing/corrupt files, malformed rows, out-of-range coords,
+      orphan labels, empty GT images), deterministic ordering.
+- [x] `src/failureforge/evaluator.py`: `evaluate_samples()` on original
+      unmodified images, `PerImageResult` + `EvaluationResults` dataclasses,
+      IoU ≥ 0.50 class-aware one-to-one matching, TP/FP/FN, precision/recall/F1,
+      corpus mAP50 (pooled AP per class, then mean), diagnostic wrong-class and
+      localization-error counts, zero‑denominator safe aggregation.
+- [x] `tests/test_evaluator.py`: 6 tests (baseline perfect, missed, FP, duplicate,
+      wrong-class, localization, multiple objects, empty GT/pred, precision/recall/F1,
+      zero-denominators, aggregate across images, IoU boundary, deterministic matching).
+- [x] `tests/test_detector.py`: 20 tests, fully mocked (no weights/network).
+- [x] `tests/test_project.py`: 2 tests (import + version).
+- [x] Full test suite: **49 passed** (all modules).
+- [x] `pyproject.toml`: no change needed.
 
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
 - Day 2: YOLO detector wrapper (inference only). ✅
-- Day 3: Dataset loader, YOLO annotation validation, baseline evaluation.
-  (Roadmap reordered: detector first so evaluation days can build on it.)
+- Day 3: Dataset loading, validation & baseline evaluation. ✅
 - Day 4: Brightness and blur transformations.
 - Day 5: Rotation, scaling, occlusion, annotation correctness.
-- Day 6: Evaluation engine and metrics.
+- Day 6: Evaluation engine and metrics (revisited with new dataset layer).
 - Day 7: Failure records and visual gallery.
 - Day 8: Perturbation sweeps and objective definition.
 - Day 9: Random search.
@@ -62,8 +77,7 @@ benchmark results are claimed.
 - Day 14: Documentation and reproducible demo.
 - Day 15: Fresh-environment verification and release.
 
-## Next (Day 3)
+## Next (Day 4)
 
-Implement + verify `dataset.py` (strict YOLO loading/validation, summary
-stats, deterministic split, tests on synthetic fixtures) plus the baseline
-evaluation harness that runs `YOLODetector` over the labeled set.
+Brightness and blur transformations with deterministic seeded randomness and
+correct annotation handling (geometry unchanged, clip-to-boundary policy).

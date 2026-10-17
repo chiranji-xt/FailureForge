@@ -4,14 +4,20 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 2)
+## Development status (Day 3)
 
 - ✅ Day 1: project foundation (packaging, docs, smoke test).
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
   implemented, tested (20 mocked tests, no weights/network required), verified.
-- ⏳ Days 3–15 per `docs/progress.md`: dataset loading, evaluation, and search
-  are **planned, not yet verified**. The quick-start and CLI sections below
-  describe the planned workflow and will fail until their scheduled day.
+- ✅ Day 3: **Dataset loading, validation & baseline evaluation** — dataset
+  loader with split-awareness and class-name consistency, evaluator with
+  IoU≥0.50 matching, TP/FP/FN, precision/recall/F1, corpus mAP50, diagnostic
+  error counts, fully tested (49 tests across all modules). The quick-start
+  workflow below is functional once a YOLO weights path and dataset are provided.
+- ⏳ Days 4–15 per `docs/progress.md`: perturbations, search algorithms, and
+  robustness reporting are **planned, not yet verified**. The quick-start and
+  CLI sections describe the planned workflow; commands will succeed on their
+  scheduled day.
 
 ## YOLO detector (Day 2, inference only)
 

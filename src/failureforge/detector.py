@@ -204,3 +204,22 @@ class YOLODetector:
             boxes_xyxy=xyxy, scores=scores, classes=classes,
             class_names=list(self.class_names),
         )
+
+
+class DummyDetector:
+    """Deterministic stub for tests; returns fixed boxes regardless of input.
+
+    Each box dict is expected to have at minimum ``class_id``; ``confidence``,
+    ``x_center``, ``y_center``, ``width``, ``height`` are accepted but ignored
+    by downstream code that only needs class identity.
+    """
+
+    def __init__(self, boxes: list[dict] | None = None):
+        self.boxes = boxes or []
+
+    def predict(self, image: object) -> list[dict]:
+        return [dict(b) for b in self.boxes]
+
+
+class ConstantRelativeDetector(DummyDetector):
+    """Predicts the boxes it was constructed with (used to simulate baseline)."""
