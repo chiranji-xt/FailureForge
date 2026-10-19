@@ -6,7 +6,7 @@ finding the most damaging configurations — decided by experiment, not assumpti
 
 ## Development status (Day 3)...
 
-- ✅ Day 1: project foundation (packaging, docs, smoke test).
+- ✅ Day 1: project foundation (packaging, docs, smoke test).done
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
   implemented, tested (20 mocked tests, no weights/network required), verified.
 - ✅ Day 3: **Dataset loading, validation & baseline evaluation** — dataset
