@@ -17,7 +17,7 @@ finding the most damaging configurations — decided by experiment, not assumpti
 - ⏳ Days 4–15 per `docs/progress.md`: perturbations, search algorithms, and
   robustness reporting are **planned, not yet verified**. The quick-start and
   CLI sections describe the planned workflow; commands will succeed on their
-  scheduled day.
+  scheduled day...
 
 ## YOLO detector (Day 2, inference only)
 
