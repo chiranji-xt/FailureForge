@@ -16,7 +16,8 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `config.py` | YAML configuration loading with defaults |
 | `dataset.py` | Strict YOLO dataset loading/validation; never silently drops rows |
 | `detector.py` | Detector interface + Ultralytics adapter; model loaded once; CPU-capable |
-| `transforms.py` | 5 seeded perturbations with documented ranges |
+| `perturbations/` | Seeded perturbation engine: 12 families over BGR `uint8` arrays with pixel-space box remapping |
+| `transforms.py` | Backward-compatible shim over `perturbations/` (PIL + normalized boxes) |
 | `annotations.py` | Box geometry helpers (YOLO ↔ xyxy, clip, validation) |
 | `metrics.py` | Greedy confidence-sorted class-aware IoU matching; corpus mAP50 |
 | `evaluator.py` | Baseline vs perturbed evaluation on transformed GT |
@@ -26,13 +27,20 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `reporting.py` | Markdown report distinguishing observation from conclusion |
 | `cli.py` | `validate-data`, `evaluate`, `search`, `report` commands |
 
-## Implemented vs planned (Day 1 status)
+`perturbations/` submodules group the 12 families: `photometric.py` (noise,
+exposure, colour), `blur.py`, `weather.py`, `occlusion.py`, `geometry.py`,
+`quality.py`, `lighting.py`, `lens.py`, `cropping.py`, `combined.py`, with shared
+core/registry in `base.py` and box maths in `boxops.py`. See
+`docs/perturbations.md` for the full parameter reference.
 
-- **Implemented (Days 1–2):** project foundation plus `detector.py`
-  (`YOLODetector` inference-only wrapper, `Detections`, task gate, SHA-256
-  fingerprint) with mocked unit tests.
-- **Planned (Days 3–15):** all other functional modules above, to be
-  implemented, tested, and verified one stage at a time per `progress.md`.
+## Implemented vs planned
+
+- **Implemented (Days 1–4):** project foundation, `detector.py` (inference-only
+  `YOLODetector`), `dataset.py`/`metrics.py`/`evaluator.py` (baseline
+  evaluation), and the `perturbations/` engine (12 families) with a `transforms.py`
+  compatibility shim.
+- **Planned (Days 5–15):** search comparison, failures/gallery, reporting, and CLI
+  integration, implemented and verified one stage at a time per `progress.md`.
 
 ## Dependency boundaries
 

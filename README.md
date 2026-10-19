@@ -4,7 +4,7 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 3)
+## Development status (Day 4)
 
 - ✅ Day 1: project foundation (packaging, docs, smoke test).
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
@@ -14,13 +14,40 @@ finding the most damaging configurations — decided by experiment, not assumpti
   validation (malformed rows, bad coords, missing/orphan/corrupt files, class
   mismatch) and pixel-coordinate conversion; `evaluate_baseline` reports
   IoU≥0.50 matching, TP/FP/FN, micro P/R/F1, per-class AP and mAP50 plus
-  wrong-class / poor-localization diagnostics. Fully tested (85 tests across all
-  modules, no weights/network required). Quick-start below is functional once a
-  YOLO weights path and dataset are provided.
-- ⏳ Days 4–15 per `docs/progress.md`: perturbations, search algorithms, and
-  robustness reporting are **planned, not yet verified**. The quick-start and
-  CLI sections describe the planned workflow; commands will succeed on their
-  scheduled day.
+  wrong-class / poor-localization diagnostics.
+- ✅ Day 4: **Robustness perturbation engine** — `failureforge.perturbations`
+  implements **12 families / 39 transforms** over BGR `uint8` images (noise,
+  exposure, blur, weather, colour, occlusion, geometric, quality, shadows,
+  lens, cropping, `combined`), seeded and reproducible, with correct
+  pixel-space ground-truth remapping for geometric/cropping ops. `transforms.py`
+  is retained as a compatibility shim. Fully tested — **455 tests pass** across
+  all modules, no weights/network required. See `docs/perturbations.md`.
+- ⏳ Days 5–15 per `docs/progress.md`: perturbation sweeps / Quick-vs-Benchmark
+  evaluation, search algorithms, and reporting are **planned, not yet verified**.
+  The quick-start and CLI sections below describe the planned workflow.
+
+## Perturbation engine (Day 4)
+
+```python
+import numpy as np
+from failureforge.perturbations import apply, available, families
+from failureforge.dataset import GroundTruthBox
+
+img = np.zeros((64, 64, 3), dtype=np.uint8)          # BGR uint8 (H, W, 3)
+boxes = [GroundTruthBox(0, 10, 10, 40, 40)]          # pixel [x1,y1,x2,y2]
+
+res = apply("rotation", img, {"angle": 30}, boxes=boxes, seed=0)
+res.image          # new BGR uint8 array (input never mutated)
+res.boxes          # re-mapped, clipped GroundTruthBox list
+res.metadata       # name, family, params, seed, geometry_changed, diagnostics
+
+print(len(available()), families())                  # 39, {family: [...]}
+```
+
+Non-geometric transforms leave ground truth unchanged; geometric and cropping
+transforms remap all four corners, clip to the canvas, and drop degenerate boxes
+(recorded in `metadata["removed_boxes"]`). Full parameter reference:
+`docs/perturbations.md`.
 
 ## YOLO detector (Day 2, inference only)
 

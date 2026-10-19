@@ -91,14 +91,61 @@ benchmark results are claimed.
       synthetic smoke check; no fabricated benchmarks.
 
 
+## Day 4 — Robustness perturbation engine (2026-10-20): DONE
+
+Implemented a modular, seeded perturbation engine covering **all 12 required
+families** (39 transforms) over BGR `uint8` images, with correct pixel-space
+ground-truth remapping and a backward-compatible `transforms.py` shim.
+
+- [x] New package `src/failureforge/perturbations/`:
+  - `base.py`: registry (`register`/`get`/`available`/`families`/`param_specs`),
+    `ParamSpec` validation, `PerturbationResult(image, boxes, metadata)`,
+    `apply(name, image, params, boxes, seed)`, BGR↔PIL helpers, `MIN_BOX_SIDE_PX`.
+  - `boxops.py`: affine/homography maths; `map_boxes` maps corners, rebuilds
+    clipped AABBs, drops degenerate boxes and records `removed_boxes`.
+  - Family modules: `photometric.py` (noise 1, exposure 2, colour 5), `blur.py`
+    (3), `weather.py` (4), `occlusion.py` (6), `geometry.py` (7), `quality.py`
+    (8), `lighting.py` (9), `lens.py` (10), `cropping.py` (11), `combined.py` (12).
+- [x] Contract: BGR `uint8` in/out, input never mutated, deterministic per seed,
+  useful `PerturbationError` on bad params/images, metadata records
+  name/family/params/seed/geometry + diagnostics. `combined` runs ordered steps
+  with deterministic child seeds and records `order`/`components`.
+- [x] `src/failureforge/transforms.py` rewritten as a compatibility shim:
+  re-exports the engine and keeps `apply_perturbation` (PIL + normalized boxes)
+  and `PARAM_RANGES` (derived from engine specs) so `evaluator.evaluate_samples`
+  (perturbation path), `failures.build_gallery`, and the `search/` previews keep
+  working — single source of truth, no duplicated logic.
+- [x] `tests/test_transforms.py` rewritten: 376 tests (parametrized contract
+  tests across all transforms + per-family positive/limit/edge tests + geometry
+  label correctness + combined order/reproducibility + legacy wrapper).
+- [x] Full suite: **455 passed** (was 85). No pre-existing failures existed.
+- [x] Integration smoke: `evaluate_samples(samples, detector, iou,
+  perturbation=...)` on the demo dataset for brightness/rotation/occlusion →
+  valid results (no detector/evaluator interface changes).
+- [x] `pyproject.toml`: **no new dependencies** (NumPy + Pillow only).
+- [x] Docs: `docs/perturbations.md` (full parameter reference + limitations);
+  updated `architecture.md` and `mvp-spec.md`.
+
+Known issues / notes:
+
+- Weather, shadows, glare, and lens effects are **approximations**, not physical
+  simulations; occlusion coverage uses a rectangle-intersection approximation;
+  `motion_blur` is average-of-shifts, not a convolution.
+- Preview modules `cli.py`/`config.py`, `failures.py`, `reporting.py`, and
+  `search/` remain **untracked** and are scheduled for Days 9–14. `cli.py` still
+  targets the pre-Day-3 API (e.g. `load_detector`, `summarize`), so it is not yet
+  runnable; this is pre-existing and out of scope for Day 4.
+- Random search and Optuna TPE are **not** implemented yet (Days 9–10).
+- No benchmark results are claimed.
+
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
 - Day 2: YOLO detector wrapper (inference only). ✅
 - Day 3: Dataset loading, validation & baseline evaluation. ✅
-- Day 4: Brightness and blur transformations.
-- Day 5: Rotation, scaling, occlusion, annotation correctness.
-- Day 6: Evaluation engine and metrics (revisited with new dataset layer).
+- Day 4: Robustness perturbation engine (all 12 families) + tests. ✅
+- Day 5: Perturbation sweeps / severity ladders + annotation-correctness checks.
+- Day 6: Evaluation engine and metrics (revisited with the perturbation layer).
 - Day 7: Failure records and visual gallery.
 - Day 8: Perturbation sweeps and objective definition.
 - Day 9: Random search.
@@ -109,7 +156,14 @@ benchmark results are claimed.
 - Day 14: Documentation and reproducible demo.
 - Day 15: Fresh-environment verification and release.
 
-## Next (Day 4)
+## Next recommended task
 
-Brightness and blur transformations with deterministic seeded randomness and
-correct annotation handling (geometry unchanged, clip-to-boundary policy).
+Connect the engine to the evaluator for **Quick Mode vs Benchmark Mode** and
+build severity sweeps + the objective definition (Days 5–8):
+
+1. Add a thin perturbation→evaluation adapter for `YoloDataset` samples
+   (BGR conversion, pixel `GroundTruthBox` in/out) so `evaluate_baseline` can run
+   on perturbed images; keep the baseline evaluator untouched.
+2. Define Quick Mode (no labels: report disappeared/new/class/confidence/box-drift)
+   and Benchmark Mode (metrics vs transformed GT), documenting what each may claim.
+3. Curate the searchable parameter ranges/specs to feed Days 9–10.

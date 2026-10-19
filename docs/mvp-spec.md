@@ -22,15 +22,25 @@ transformed ground-truth annotations → detector predictions → IoU-based
 prediction matching and metrics → failure records → random search vs TPE →
 independent confirmation evaluation → JSON/CSV/Markdown reports + gallery.
 
-## Supported perturbations (planned)
+## Supported perturbations
 
-1. Brightness adjustment (geometry unchanged).
-2. Gaussian blur (geometry unchanged).
-3. Rotation (boxes updated, clipped; degenerate boxes recorded).
-4. Scaling (boxes updated, clipped; degenerate boxes recorded).
-5. Occlusion (explicit fully/partially-occluded policy, recorded).
+The `failureforge.perturbations` engine implements **12 families** (see
+`docs/perturbations.md` for full parameters): noise (Gaussian, salt-and-pepper,
+speckle); brightness/exposure; blur (Gaussian, motion, defocus); weather
+(fog, haze, rain, snow); colour distortion (hue, saturation, contrast,
+temperature); occlusion (cutout, random patches, partial obstruction);
+geometric (rotation, scaling, translation, perspective); image quality
+(JPEG, downscale, pixelate); shadows/lighting; lens effects (glare, flare,
+vignetting); cropping/framing; and configurable `combined` compositions.
 
-Every perturbation is seeded and reproducible, with documented parameter ranges.
+Transforms operate on BGR `uint8` arrays. Non-geometric transforms leave ground
+truth unchanged; geometric and cropping transforms remap, clip, and (per the
+documented rule) drop degenerate boxes. Every transform is seeded and
+reproducible, with documented experimental parameter ranges.
+
+`failureforge.transforms.PARAM_RANGES` exposes a legacy `{name: {param: (low,
+high)}}` search-space view for the original five transforms; it is derived from
+the engine specs.
 
 ## Evaluation approach (planned)
 
