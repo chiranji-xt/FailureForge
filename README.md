@@ -9,11 +9,14 @@ finding the most damaging configurations — decided by experiment, not assumpti
 - ✅ Day 1: project foundation (packaging, docs, smoke test).done
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
   implemented, tested (20 mocked tests, no weights/network required), verified.
-- ✅ Day 3: **Dataset loading, validation & baseline evaluation** — dataset
-  loader with split-awareness and class-name consistency, evaluator with
-  IoU≥0.50 matching, TP/FP/FN, precision/recall/F1, corpus mAP50, diagnostic
-  error counts, fully tested (49 tests across all modules). The quick-start
-  workflow below is functional once a YOLO weights path and dataset are provided.
+- ✅ Day 3: **Dataset loading, validation & baseline evaluation** — `YoloDataset`
+  with real `data.yaml`/split-directory support, name-based class mapping, strict
+  validation (malformed rows, bad coords, missing/orphan/corrupt files, class
+  mismatch) and pixel-coordinate conversion; `evaluate_baseline` reports
+  IoU≥0.50 matching, TP/FP/FN, micro P/R/F1, per-class AP and mAP50 plus
+  wrong-class / poor-localization diagnostics. Fully tested (85 tests across all
+  modules, no weights/network required). Quick-start below is functional once a
+  YOLO weights path and dataset are provided.
 - ⏳ Days 4–15 per `docs/progress.md`: perturbations, search algorithms, and
   robustness reporting are **planned, not yet verified**. The quick-start and
   CLI sections describe the planned workflow; commands will succeed on their

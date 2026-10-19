@@ -40,24 +40,56 @@ benchmark results are claimed.
 - [x] `pyproject.toml`: no change needed (`yolo` extra already declared Day 1).
 - [x] Full test suite: **49 passed** across all modules.
 
-## Day 3 — Dataset loading, validation & baseline evaluation (2026-10-16): DONE
+## Day 3 — Dataset loading, validation & baseline evaluation (2026-10-17): DONE
 
-- [x] `src/failureforge/dataset.py`: YOLO-format loader with split-awareness
-      (`_train`/`_val`/`_test` filename markers), class-name consistency check,
-      validation (missing/corrupt files, malformed rows, out-of-range coords,
-      orphan labels, empty GT images), deterministic ordering.
-- [x] `src/failureforge/evaluator.py`: `evaluate_samples()` on original
-      unmodified images, `PerImageResult` + `EvaluationResults` dataclasses,
-      IoU ≥ 0.50 class-aware one-to-one matching, TP/FP/FN, precision/recall/F1,
-      corpus mAP50 (pooled AP per class, then mean), diagnostic wrong-class and
-      localization-error counts, zero‑denominator safe aggregation.
-- [x] `tests/test_evaluator.py`: 6 tests (baseline perfect, missed, FP, duplicate,
-      wrong-class, localization, multiple objects, empty GT/pred, precision/recall/F1,
-      zero-denominators, aggregate across images, IoU boundary, deterministic matching).
-- [x] `tests/test_detector.py`: 20 tests, fully mocked (no weights/network).
-- [x] `tests/test_project.py`: 2 tests (import + version).
-- [x] Full test suite: **49 passed** (all modules).
-- [x] `pyproject.toml`: no change needed.
+- [x] `src/failureforge/dataset.py`: rewritten `YoloDataset` loader with real
+      `data.yaml` support (`from_config`), split-directory support
+      (`from_dirs`), streaming `iter_samples()`, and a programmatic API
+      (`metadata`, `class_names`, `class_name`, `class_mapping`, `len`,
+      `image_paths`). Split preference is **test → val → explicit** (never a
+      silent train default; train-only datasets require `split="train"`).
+      Labels directory is derived by replacing the `images` path component with
+      `labels`. Coordinate convention: normalized rows are converted to **pixel**
+      `[x1,y1,x2,y2]` using the real image size.
+- [x] Validation (`validate()`): missing/corrupt/unreadable images, missing
+      labels (error; `allow_missing_labels=True` downgrades to warning),
+      malformed/non-numeric rows (with file:line context), out-of-range
+      normalized coordinates, non-positive width/height, out-of-range class IDs,
+      orphan labels, and **class-name consistency** against the detector’s
+      names (`validate(model_class_names=...)`). Issues are returned as data
+      (`ValidationIssue`/`ValidationResult`), never silently dropped.
+- [x] Class mapping is **name-based**, not index-based (`class_mapping`):
+      reordered or extra model classes map correctly; missing/duplicate names
+      raise `DatasetError`.
+- [x] `src/failureforge/metrics.py`: array-based `iou_matrix`, class-aware
+      one-to-one greedy `match_boxes` (by descending confidence; `MatchResult`
+      exposes tp/fp/fn indices, matches, `wrong_class`, `poor_localization`
+      diagnostics — diagnostics never enter TP/FP/FN), `prf1` (zero-denominator
+      → 0.0), `aggregate_counts` (micro-average), `average_precision` (all-point
+      interpolation), `compute_map50` (pooled per-class AP @ IoU 0.50). Legacy
+      normalized-dict helpers retained for earlier modules.
+- [x] `src/failureforge/evaluator.py`: `evaluate_baseline(detector, dataset,
+      iou_threshold=0.5)` on original unmodified images; `PerImageResult`,
+      `ClassMetrics` (per-class AP50), `EvaluationReport` with `to_dict()`,
+      `aggregate`, `per_class`, `per_image`, `error_records`, `metadata`
+      (dataset + model fingerprint + class mapping). Fixes a prior adapter bug
+      that dropped box geometry. Requires the detector to expose `class_names`
+      (raises `ValueError` otherwise). Legacy `evaluate_samples`,
+      `EvaluationResults`, `metric_drop` retained.
+- [x] `tests/test_dataset.py`: 19 tests (split preference, explicit split,
+      no-train-default, pixel conversion, empty/missing labels, malformed/
+      non-numeric/out-of-range rows/coords, corrupt image, orphan label,
+      name-based + ambiguous mapping, deterministic order, compat load/split).
+- [x] `tests/test_evaluator.py`: rewritten — 21 tests (matching primitives,
+      IoU boundary, determinism, no double-counting, perfect/missed/FP/duplicate/
+      wrong-class/poor-localization/multi-object/empty-GT/empty-pred, P/R/F1
+      values, zero denominators, multi-class mAP50, reordered class mapping,
+      mismatch rejection, metadata/thresholds, legacy `evaluate_samples`).
+- [x] Full test suite: **85 passed**. End-to-end smoke on `examples/`
+      demo data (validate → `evaluate_baseline`): valid, F1 = 1.0, mAP50 = 1.0.
+- [x] `pyproject.toml`: no change needed. No results are claimed beyond the
+      synthetic smoke check; no fabricated benchmarks.
+
 
 ## 15-day roadmap (planned milestones, not completed features)
 
