@@ -238,15 +238,27 @@ def compare_predictions(
             class_changed.append({
                 "clean_index": i, "perturbed_index": j,
                 "from_class": from_class, "to_class": to_class, "iou": iou,
+                "clean_box": [float(x) for x in clean.boxes_xyxy[i]],
+                "perturbed_box": [float(x) for x in perturbed.boxes_xyxy[j]],
+                "clean_score": float(clean.scores[i]),
+                "perturbed_score": float(perturbed.scores[j]),
             })
             continue
         confidence_changes.append({
             "clean_index": i, "perturbed_index": j, "class_id": from_class,
             "delta": float(perturbed.scores[j] - clean.scores[i]), "iou": iou,
+            "clean_box": [float(x) for x in clean.boxes_xyxy[i]],
+            "perturbed_box": [float(x) for x in perturbed.boxes_xyxy[j]],
+            "clean_score": float(clean.scores[i]),
+            "perturbed_score": float(perturbed.scores[j]),
         })
         box_drift.append({
             "clean_index": i, "perturbed_index": j, "class_id": from_class,
             "iou": iou, "drift": float(1.0 - iou),
+            "clean_box": [float(x) for x in clean.boxes_xyxy[i]],
+            "perturbed_box": [float(x) for x in perturbed.boxes_xyxy[j]],
+            "clean_score": float(clean.scores[i]),
+            "perturbed_score": float(perturbed.scores[j]),
         })
 
     return {

@@ -188,11 +188,10 @@ Known issues / notes:
   images and the same seed for every image in a run.
 - Sweeps only cover caller-supplied configurations; automatic random/TPE search
   is still Days 9–10.
-- `annotations.py` + `tests/test_annotations.py` remain an untracked preview and
-  are not wired into this adapter; annotation-correctness checks were carried
-  forward beyond Day 6.
+- `annotations.py` + `tests/test_annotations.py` moved out of preview in Day 7:
+  the module now provides read-only dataset/label validation and is tracked.
 - `cli.py` remains stale (pre-Day-3 `load_detector`/`summarize` API), so no CLI
-  commands are exposed. Reporting/failure records remain Days 7–13.
+  commands are exposed. CSV export and CLI integration remain later days.
 - No benchmark results are claimed.
 
 ## Day 6 — Failure analysis, categorization & reporting (2026-10-21): DONE
@@ -251,10 +250,9 @@ evaluation logic.
 
 Known issues / notes:
 
-- CSV failure/trial export and the visual gallery are **not** implemented; the
-  modular CSV writer from the stale preview was intentionally removed.
-- `annotations.py` + `tests/test_annotations.py` remain an untracked preview;
-  annotation-correctness checks are outstanding (Day 7).
+- CSV failure/trial export is **not** implemented; the modular CSV writer from
+  the stale preview was intentionally removed. The gallery arrived in Day 7.
+- Annotation-correctness checks were completed in Day 7 (see below).
 - `cli.py` remains stale and is not wired; no CLI commands are exposed.
 - Class confusion relies on the evaluator's `wrong_class` diagnostic; duplicate
   detection is same-class only (different-class extras become class confusion or
@@ -266,6 +264,75 @@ Known issues / notes:
   universal damage claim is made.
 - No benchmark results are claimed.
 
+## Day 7 — Failure gallery & annotation correctness (2026-10-22): DONE
+
+Objective: make verified failures and Quick instability inspectable offline, and
+close the outstanding annotation-correctness checks without rebuilding the
+evaluator, dataset loader, or perturbation engine.
+
+- [x] Inspection: branch `main`, HEAD `46c7a6f`, remote in sync; suite **511
+      passed** before changes. Reviewed evaluator/dataset/evaluation/failures/
+      reporting plus the untracked `annotations.py` preview; replaced its
+      single-row helper-only scope with a read-only validator while keeping the
+      geometry helpers.
+- [x] Completed `src/failureforge/annotations.py`:
+  - `validate_annotations(dataset)` and `validate_label_file(...)` return
+    deterministic `AnnotationIssue` records with severity, code, image/path,
+    and line where available. Errors vs warnings are explicit; no repair or
+    mutation.
+  - Errors: malformed rows, non-numeric/non-finite geometry, negative/invalid
+    class IDs, out-of-range class IDs, non-positive width/height, normalized
+    coordinates outside `[0, 1]`, unreadable/orphan files, and missing labels
+    (following `allow_missing_labels`).
+  - Warnings: derived boxes extending outside the image canvas (with image
+    dimensions when known) and overlapping annotations at IoU >= 0.85. Missing
+    files are counted separately from explicitly empty files; empty files are
+    valid zero-object images.
+  - Counts/`per_class`/JSON-safe result record; unreadable images are reported
+    without stopping label checks.
+- [x] Additive Quick Mode detail: matched clean/perturbed records now carry
+      boxes and scores for class changes, confidence changes, and box drift.
+      `analyze_quick` propagates them when present and remains compatible with
+      older records that only contain indices/classes.
+- [x] Added `src/failureforge/gallery.py`:
+  - Single offline HTML file (inline CSS/JS) from `BenchmarkRun`/`QuickRun`;
+    verified Benchmark entries and Quick instability are labelled separately.
+  - Shows sample/image, baseline-vs-trial context, category/kind, reason,
+    metric role, classes/indices, boxes, score/IoU/thresholds, transformation
+    name/family/params/seed, and trial rank.
+  - Optional `clean_images`/`perturbed_images`: only referenced files are copied
+    into `images/` under content-hashed relative names; no source paths in HTML.
+    Boxes are SVG overlays at the artifact's real pixel dimensions.
+  - No artifact -> explicitly labelled box diagram; no boxes -> graceful
+    message. Out-of-bounds coordinates versus the artifact produce a warning.
+  - HTML-escaped text/attributes, script-safe embedded JSON, deterministic
+    ordering, `max_entries`, local filters, and `FileExistsError` unless
+    `overwrite=True`.
+  - Schema marker: `failureforge.failure-gallery.v1`.
+- [x] New/expanded tests: `tests/test_annotations.py` (15) and
+      `tests/test_gallery.py` (11) cover valid/empty/missing labels, all error and
+      warning classes, boundaries, non-finite values, overlap warnings,
+      no-mutation, Benchmark and Quick galleries, missing images/boxes, HTML
+      escaping, relative paths/artifact dimensions, deterministic output,
+      overwrite protection, truncation, and Quick accuracy-claim separation.
+- [x] Full suite: **534 passed** (was 511), CPU-only, no weights/network.
+- [x] Docs: new `docs/gallery.md` and `docs/annotations.md`; updated README,
+      `docs/architecture.md`, `docs/mvp-spec.md`, `docs/failure-analysis.md`,
+      and this log.
+
+Known issues / notes:
+
+- Gallery image maps are caller-supplied and trusted to match the coordinate
+  space (clean for baseline/Quick-clean, transformed for trials/Quick-perturbed).
+  Dimension mismatches are only heuristically detectable.
+- Gallery shows run records only (default cap 500); it is not a full image
+  browser. CSV export and a gallery CLI remain unimplemented.
+- Annotation validation checks format/geometry/class vocabulary, not semantic
+  label correctness. Overlap warnings are advisory (different-class overlaps
+  may be legitimate).
+- `cli.py` remains stale and is not wired.
+- No benchmark results are claimed.
+
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
@@ -275,8 +342,8 @@ Known issues / notes:
 - Day 5: Perturbation→evaluation adapter, Benchmark/Quick Mode, severity sweeps. ✅
 - Day 6: Failure analysis, verified categories, Quick instability records,
   schema-versioned JSON/Markdown reporting. ✅
-- Day 7: Failure gallery + annotation-correctness checks.
-- Day 8: Perturbation sweeps and objective definition.
+- Day 7: Failure gallery + annotation-correctness checks. ✅
+- Day 8: Search objective definition and search-space preparation.
 - Day 9: Random search.
 - Day 10: Optuna TPE search.
 - Day 11: Multi-seed comparison and confirmation evaluation.
@@ -287,14 +354,15 @@ Known issues / notes:
 
 ## Next recommended task
 
-Define the search objective and add the failure gallery/annotation checks
-(Days 7–8):
+Define the search objective and prepare the shared search space (Day 8):
 
-1. Wire or fold the untracked `annotations.py` preview into dataset/transform
-   tests and document geometric/cropping annotation assumptions.
-2. Add a visual failure gallery and (if still useful) CSV export, consuming the
-   Day-6 run records without duplicating analysis.
-3. Define the `baseline − perturbed` objective and trial schema for Days 9–10,
-   reusing `failure_counts`, `drops`, transformation config, and seeds.
-4. Keep the CLI disabled (Day 13); continue reusing the evaluator and analysis
-   layers rather than reimplementing matching/metrics.
+1. Specify the scalar objective from `baseline − perturbed` (one documented
+   metric, finite-only, compatible-baseline requirement) and the trial record
+   fields needed for attributable comparisons.
+2. Define one search-space representation shared by random search and TPE,
+   reusing perturbation `param_specs()`/ranges and per-trial seed derivation;
+   do not run or claim either search yet.
+3. Add tests for objective direction, missing/non-finite values, incompatible
+   trials, deterministic seeds, and budget accounting on a mock objective.
+4. Keep CSV export/CLI for later; continue consuming Day-6/7 records rather than
+   reimplementing analysis or gallery logic.

@@ -90,6 +90,29 @@ rewarded for invalid annotations or bugs.
   family/operation groups, severity ladders when supported, failure counts,
   instability summary, warnings, limitations). See `docs/failure-analysis.md`.
 
+## Gallery and annotation validation (Day 7, implemented)
+
+- `failureforge.gallery` writes a single offline HTML gallery from existing
+  Benchmark/Quick run records. It separates verified Benchmark failures from
+  Quick prediction instability, shows category/kind, classes, boxes, scores,
+  IoU/thresholds, transformation name/family/params/seed and trial rank, and
+  supports local category/context/text filtering.
+- Image artifacts are optional. Only caller-supplied images referenced by
+  included entries are copied, under content-hashed relative names. Boxes are
+  rendered as SVG overlays with the image's real pixel dimensions; without an
+  artifact the gallery shows a clearly labelled box diagram instead of claiming
+  an overlay. Missing images/box details degrade gracefully.
+- Gallery content is HTML-escaped, embedded JSON cannot terminate its script
+  element, entry ordering is deterministic, and existing HTML is protected from
+  silent overwrite. Schema marker:
+  `failureforge.failure-gallery.v1`.
+- `failureforge.annotations` provides read-only annotation validation with
+  errors and warnings, image/label identifiers and line numbers: malformed
+  rows, non-finite/out-of-range geometry, invalid class IDs, non-positive
+  sizes, missing vs empty files, orphan/unreadable files, canvas/dimension
+  mismatches, and duplicate/overlap warnings. Invalid annotations are never
+  repaired silently.
+
 ## Search comparison (planned)
 
 - Random search and Optuna TPE share the search space, trial budget,
@@ -106,7 +129,8 @@ rewarded for invalid annotations or bugs.
 - Visual failure gallery (ground truth vs predictions).
 
 Implemented so far: schema-versioned JSON and Markdown for Benchmark/Quick runs
-(`failureforge.reporting`); CSV trial export and the gallery remain planned.
+(`failureforge.reporting`) and an offline HTML gallery (`failureforge.gallery`);
+CSV trial export remains planned.
 
 ## Acceptance criteria (MVP)
 
@@ -122,6 +146,10 @@ Implemented so far: schema-versioned JSON and Markdown for Benchmark/Quick runs
   separate from verified failures.
 - JSON reports are valid, schema-versioned, handle NumPy/non-finite values, and
   redact absolute paths by default; Markdown output is deterministic.
+- Annotation validation distinguishes errors from warnings, handles
+  missing-vs-empty files, and never mutates/repairs labels.
+- The gallery is offline, HTML-escaped, uses relative artifact paths, and does
+  not call Quick instability a verified failure or claim missing overlays.
 - Both searches run against a deterministic test objective and record trials.
 - Report generation works from saved results.
 - CI installs the project and runs the core test suite.

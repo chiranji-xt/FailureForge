@@ -993,6 +993,22 @@ def analyze_quick(result: QuickModeResult) -> QuickAnalysis:
                 clean_class_name=_class_name(names, int(item["from_class"])),
                 perturbed_class_id=int(item["to_class"]),
                 perturbed_class_name=_class_name(names, int(item["to_class"])),
+                clean_box=(
+                    list(item["clean_box"]) if item.get("clean_box") is not None
+                    else None
+                ),
+                perturbed_box=(
+                    list(item["perturbed_box"])
+                    if item.get("perturbed_box") is not None else None
+                ),
+                clean_score=(
+                    float(item["clean_score"])
+                    if item.get("clean_score") is not None else None
+                ),
+                perturbed_score=(
+                    float(item["perturbed_score"])
+                    if item.get("perturbed_score") is not None else None
+                ),
                 iou=float(item["iou"]), iou_threshold=iou_threshold,
                 confidence_epsilon=confidence_epsilon,
             ))
@@ -1004,6 +1020,24 @@ def analyze_quick(result: QuickModeResult) -> QuickAnalysis:
                 perturbed_pred_index=int(item["perturbed_index"]),
                 clean_class_id=int(item["class_id"]),
                 clean_class_name=_class_name(names, int(item["class_id"])),
+                perturbed_class_id=int(item["class_id"]),
+                perturbed_class_name=_class_name(names, int(item["class_id"])),
+                clean_box=(
+                    list(item["clean_box"]) if item.get("clean_box") is not None
+                    else None
+                ),
+                perturbed_box=(
+                    list(item["perturbed_box"])
+                    if item.get("perturbed_box") is not None else None
+                ),
+                clean_score=(
+                    float(item["clean_score"])
+                    if item.get("clean_score") is not None else None
+                ),
+                perturbed_score=(
+                    float(item["perturbed_score"])
+                    if item.get("perturbed_score") is not None else None
+                ),
                 confidence_delta=float(item["delta"]), iou=float(item["iou"]),
                 iou_threshold=iou_threshold,
                 confidence_epsilon=confidence_epsilon,
@@ -1016,6 +1050,24 @@ def analyze_quick(result: QuickModeResult) -> QuickAnalysis:
                 perturbed_pred_index=int(item["perturbed_index"]),
                 clean_class_id=int(item["class_id"]),
                 clean_class_name=_class_name(names, int(item["class_id"])),
+                perturbed_class_id=int(item["class_id"]),
+                perturbed_class_name=_class_name(names, int(item["class_id"])),
+                clean_box=(
+                    list(item["clean_box"]) if item.get("clean_box") is not None
+                    else None
+                ),
+                perturbed_box=(
+                    list(item["perturbed_box"])
+                    if item.get("perturbed_box") is not None else None
+                ),
+                clean_score=(
+                    float(item["clean_score"])
+                    if item.get("clean_score") is not None else None
+                ),
+                perturbed_score=(
+                    float(item["perturbed_score"])
+                    if item.get("perturbed_score") is not None else None
+                ),
                 iou=float(item["iou"]), drift=float(item["drift"]),
                 iou_threshold=iou_threshold,
                 confidence_epsilon=confidence_epsilon,

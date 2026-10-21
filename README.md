@@ -4,7 +4,7 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 6)
+## Development status (Day 7)
 
 - ✅ Day 1: project foundation (packaging, docs, smoke test).
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
@@ -39,9 +39,43 @@ finding the most damaging configurations — decided by experiment, not assumpti
   dependency-free Markdown report with metric comparisons, family/operation
   groups, severity ladders, rankings, and warnings. Full suite: **511 tests
   pass**, CPU-only, no weights/network. See `docs/failure-analysis.md`.
-- ⏳ Days 7–15 per `docs/progress.md`: failure gallery, search algorithms,
-  objective definition, reports, and CLI are **planned, not yet verified**. The
+- ✅ Day 7: **Failure gallery & annotation validation** — `failureforge.gallery`
+  renders a portable, dependency-free HTML gallery from Benchmark/Quick run
+  records with escaped content, deterministic ordering, optional relative image
+  artifacts and correct GT/prediction box overlays; entries without images fall
+  back to clearly labelled box diagrams. `failureforge.annotations` validates
+  labels read-only with errors/warnings and file:line context, including
+  missing-vs-empty files, non-finite/out-of-range geometry, class IDs, invalid
+  sizes, canvas mismatches, and overlap warnings. Full suite: **534 tests pass**,
+  CPU-only, no weights/network. See `docs/gallery.md` and `docs/annotations.md`.
+- ⏳ Days 8–15 per `docs/progress.md`: search objective/algorithms, independent
+  confirmation, CSV export, and CLI are **planned, not yet verified**. The
   quick-start and CLI sections below describe the planned workflow.
+
+## Failure gallery & annotation checks (Day 7)
+
+```python
+from failureforge.annotations import validate_annotations
+from failureforge.gallery import write_gallery
+
+validation = validate_annotations(ds)          # read-only; errors + warnings
+print(validation.is_valid, [str(i) for i in validation.errors])
+validation.raise_if_invalid()
+
+# run / quick are Day-6 BenchmarkRun / QuickRun records
+gallery_path = write_gallery(
+    run, "results/gallery",
+    clean_images={"img0.png": "data/images/val/img0.png"},   # optional
+    perturbed_images={"img0.png": "results/perturbed/img0.png"},
+)
+# Open gallery_path directly in a browser; no network access is needed.
+```
+
+The gallery labels verified Benchmark failures separately from Quick Mode
+prediction instability and never presents Quick counts as accuracy. Only
+referenced images are copied (content-hashed relative names). If no artifact is
+supplied, boxes are shown in a schematic diagram rather than falsely claiming an
+image overlay. See `docs/gallery.md` for entry fields and limitations.
 
 ## Failure analysis & reporting (Day 6)
 
@@ -180,7 +214,7 @@ pytest -q
 ```
 
 The suite is CPU-only and uses synthetic fixtures and mocked detectors (no
-weights, downloads, or network). Current status: **511 passed**.
+weights, downloads, or network). Current status: **534 passed**.
 
 ## Limitations
 

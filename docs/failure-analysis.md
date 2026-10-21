@@ -61,7 +61,8 @@ Kinds: `disappeared`, `appeared`, `class_changed`, `confidence_changed`,
 `box_drift`. Each record keeps image, clean/perturbed prediction indices,
 classes, boxes, scores, IoU/drift, confidence delta, transformation
 (name/family/params/seed), and thresholds. Empty predictions are handled by
-ordinary unmatched sets; no labels are read.
+ordinary unmatched sets; no labels are read. Matched-change records now include
+clean/perturbed boxes and scores when the Day-5 comparison provides them.
 
 ## Structured schema (v1)
 
@@ -147,7 +148,6 @@ trials), warnings, and limitations. Quick Mode reports instability summary and
 per-image counts instead.
 
 ## What is not a verified failure
-
 - Quick Mode records (no labels).
 - A metric drop by itself: it is an observation for the evaluated model,
   dataset, split, seeds, and thresholds.
@@ -164,3 +164,10 @@ per-image counts instead.
 - Localization of matched predictions is a diagnostic aspect of a TP.
 - Severity ladders are parameter ladders, not invented severity labels.
 - No CLI command is exposed yet (Day 13); use the Python functions above.
+
+## Gallery and annotation checks
+
+Day 7 adds a portable HTML gallery (`failureforge.gallery`, see
+`docs/gallery.md`) over these run records, plus read-only annotation validation
+(`failureforge.annotations`, see `docs/annotations.md`). Neither changes the JSON
+or Markdown schemas.
