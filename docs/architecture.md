@@ -20,7 +20,8 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `transforms.py` | Backward-compatible shim over `perturbations/` (PIL + normalized boxes) |
 | `annotations.py` | Box geometry helpers (YOLO ↔ xyxy, clip, validation) |
 | `metrics.py` | Greedy confidence-sorted class-aware IoU matching; corpus mAP50 |
-| `evaluator.py` | Baseline vs perturbed evaluation on transformed GT |
+| `evaluator.py` | Baseline evaluation over a `(sample, bgr)` stream; unchanged public `evaluate_baseline` |
+| `evaluation.py` | Perturbation→evaluation adapter: Benchmark Mode (deltas vs transformed GT), label-free Quick Mode (instability), severity sweeps |
 | `failures.py` | Failure records (CSV/JSON) + visual gallery |
 | `search/random_search.py` | Seeded uniform sampling over the shared search space |
 | `search/tpe_search.py` | Optuna TPESampler over the same space/objective |
@@ -35,12 +36,19 @@ core/registry in `base.py` and box maths in `boxops.py`. See
 
 ## Implemented vs planned
 
-- **Implemented (Days 1–4):** project foundation, `detector.py` (inference-only
+- **Implemented (Days 1–5):** project foundation, `detector.py` (inference-only
   `YOLODetector`), `dataset.py`/`metrics.py`/`evaluator.py` (baseline
-  evaluation), and the `perturbations/` engine (12 families) with a `transforms.py`
-  compatibility shim.
-- **Planned (Days 5–15):** search comparison, failures/gallery, reporting, and CLI
-  integration, implemented and verified one stage at a time per `progress.md`.
+  evaluation), the `perturbations/` engine (12 families) with a `transforms.py`
+  compatibility shim, and `evaluation.py` (Benchmark/Quick Mode + severity
+  sweeps).
+- **Planned (Days 6–15):** failure records/gallery, search comparison, objective
+  definition, reporting, and CLI integration, implemented and verified one stage
+  at a time per `progress.md`.
+
+The evaluation adapter does not reimplement evaluation: it builds a stream of
+`(transformed_sample, bgr)` pairs and passes it to the evaluator's shared
+`_evaluate_stream`. Quick Mode uses the same prediction dataclasses but
+location-matches clean vs perturbed outputs without reading labels.
 
 ## Dependency boundaries
 

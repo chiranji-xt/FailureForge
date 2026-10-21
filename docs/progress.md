@@ -138,14 +138,72 @@ Known issues / notes:
 - Random search and Optuna TPE are **not** implemented yet (Days 9–10).
 - No benchmark results are claimed.
 
+## Day 5 — Perturbation→evaluation adapter, Benchmark/Quick Mode, sweeps (2026-10-21): DONE
+
+Objective: connect the perturbation engine to the existing evaluator and add
+severity sweeps, without duplicating dataset, box, or metric logic.
+
+- [x] `evaluator.py` refactor (behavior-preserving): the evaluation loop moved
+      into private `_evaluate_stream(detector, dataset, stream, iou_threshold)`
+      consuming `(sample, bgr)` pairs; `_load_bgr`/`_default_stream` load original
+      images from disk. `evaluate_baseline` keeps its exact public signature and
+      returns identical reports (42 evaluator/dataset tests still pass).
+- [x] New `src/failureforge/evaluation.py` (thin adapter, no new dependencies):
+  - `load_sample_bgr`, `prepare_perturbed_sample`, `iter_perturbed_samples`:
+    load BGR, apply a registered transform with pixel GT boxes, return a new
+    `Sample` via `dataclasses.replace` (transformed boxes + real image dims).
+    Input samples/boxes/images are never mutated.
+  - **Benchmark Mode** (`evaluate_perturbed`): baseline evaluated once (or
+    supplied), perturbed pass evaluated by the shared stream, report
+    `PerturbedResult(baseline, perturbed, perturbation, deltas, metadata)` with
+    `deltas = perturbed − baseline` for TP/FP/FN/P/R/F1/mAP50. `to_dict` can omit
+    the baseline to avoid duplication in sweeps.
+  - **Quick Mode** (`quick_mode`): iterates `dataset.image_paths` only (never
+    reads labels), compares clean vs perturbed predictions with deterministic,
+    class-agnostic, one-to-one greedy IoU matching, and reports disappeared /
+    appeared / class-changed / confidence-changed / box drift. It deliberately
+    reports **no** accuracy metrics (no GT), and its summary/to_dict contain no
+    precision/recall/F1/mAP keys.
+  - **Severity sweeps** (`run_severity_sweep`): explicit `configs` list (no
+    combinatorial expansion), `mode="benchmark"|"quick"`; per-trial seed derived
+    via SHA-256 of `base_seed|index|name|params` (deterministic, stable); one
+    shared baseline per sweep; a failing trial records
+    `PerturbationError: ...` with its index/config (`strict=True` re-raises).
+- [x] `tests/test_evaluation.py`: 19 tests covering BGR order, no-mutation,
+      transformed dims/boxes (crop bounds, rotation remap), benchmark deltas on
+      transformed GT, baseline reuse (no recompute), Quick Mode instability with
+      no label files present, class-agnostic matching, sweep reproducibility,
+      seed sensitivity, baseline separation, attributable errors, strict mode,
+      and unknown-mode rejection.
+- [x] Full suite: **474 passed** (was 455), CPU-only, no weights/network.
+- [x] Docs: updated `README.md` (Day 5 status + usage), `architecture.md`,
+      `mvp-spec.md`, and this log.
+
+Known issues / notes:
+
+- Benchmark deltas are **observations** for a fixed detector/dataset/seed, not
+  proof of real-world failure; single-seed sweeps are noisy.
+- Quick Mode matches by location, so a class flip at the same box is reported as
+  `class_changed` (not as a disappearance + appearance). It uses all dataset
+  images and the same seed for every image in a run.
+- Sweeps only cover caller-supplied configurations; automatic random/TPE search
+  is still Days 9–10.
+- `annotations.py` + `tests/test_annotations.py` remain an untracked preview and
+  are not wired into this adapter; annotation-correctness checks are moved to
+  Day 6.
+- `cli.py` remains stale (pre-Day-3 `load_detector`/`summarize` API), so no CLI
+  commands are exposed. Reporting/failure records remain Days 7–13.
+- No benchmark results are claimed.
+
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
 - Day 2: YOLO detector wrapper (inference only). ✅
 - Day 3: Dataset loading, validation & baseline evaluation. ✅
 - Day 4: Robustness perturbation engine (all 12 families) + tests. ✅
-- Day 5: Perturbation sweeps / severity ladders + annotation-correctness checks.
-- Day 6: Evaluation engine and metrics (revisited with the perturbation layer).
+- Day 5: Perturbation→evaluation adapter, Benchmark/Quick Mode, severity sweeps. ✅
+- Day 6: Evaluation engine and metrics (revisited with the perturbation layer;
+  annotation-correctness checks).
 - Day 7: Failure records and visual gallery.
 - Day 8: Perturbation sweeps and objective definition.
 - Day 9: Random search.
@@ -158,12 +216,14 @@ Known issues / notes:
 
 ## Next recommended task
 
-Connect the engine to the evaluator for **Quick Mode vs Benchmark Mode** and
-build severity sweeps + the objective definition (Days 5–8):
+Revisit metrics/matching under the perturbation layer and define the objective
+(Days 6–8):
 
-1. Add a thin perturbation→evaluation adapter for `YoloDataset` samples
-   (BGR conversion, pixel `GroundTruthBox` in/out) so `evaluate_baseline` can run
-   on perturbed images; keep the baseline evaluator untouched.
-2. Define Quick Mode (no labels: report disappeared/new/class/confidence/box-drift)
-   and Benchmark Mode (metrics vs transformed GT), documenting what each may claim.
-3. Curate the searchable parameter ranges/specs to feed Days 9–10.
+1. Verify annotation correctness end-to-end (wire the untracked `annotations.py`
+   preview or fold its checks into dataset/transform tests) and document the
+   geometric/cropping assumptions.
+2. Define the search objective (`baseline − perturbed`, higher = more damaging)
+   and the failure-record schema so search results are attributable to
+   configurations, seeds, and images.
+3. Keep the CLI disabled (Day 13) and continue reusing
+   `evaluate_baseline`/`_evaluate_stream` rather than reimplementing evaluation.

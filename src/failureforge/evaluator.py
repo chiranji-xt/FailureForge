@@ -21,7 +21,7 @@ Conventions
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Iterable
 
 import numpy as np
 from PIL import Image
@@ -184,13 +184,31 @@ def _map_classes(classes: np.ndarray, model_to_dataset: dict[int, int]) -> np.nd
 # Public API
 # ---------------------------------------------------------------------------
 
-def evaluate_baseline(
+def _load_bgr(image_path: Any) -> np.ndarray:
+    """Load an image file as an OpenCV-style BGR ``uint8`` array."""
+    with Image.open(image_path) as im:
+        return _pil_to_bgr(im)
+
+
+def _default_stream(dataset: YoloDataset):
+    """Yield ``(sample, bgr)`` using on-disk images (unperturbed baseline)."""
+    for sample in dataset.iter_samples():
+        yield sample, _load_bgr(sample.image_path)
+
+
+def _evaluate_stream(
     detector: Any,
     dataset: YoloDataset,
+    stream: Iterable[tuple[Sample, np.ndarray]],
     *,
     iou_threshold: float = 0.5,
 ) -> EvaluationReport:
-    """Evaluate ``detector`` on ``dataset`` using original images.
+    """Evaluate ``detector`` over pre-loaded ``(sample, bgr_image)`` pairs.
+
+    ``dataset`` supplies provenance (class names/mapping, metadata, split);
+    ``sample.boxes`` supplies ground truth and ``bgr_image`` is what the
+    detector sees. This lets the perturbation adapter evaluate transformed
+    images/boxes without reimplementing any evaluation logic.
 
     Raises:
         ValueError: if the detector exposes no class names or the dataset/model
@@ -216,9 +234,7 @@ def evaluate_baseline(
     def _counts(cid: int) -> dict[str, int]:
         return per_class_counts.setdefault(cid, {"gt": 0, "tp": 0, "fp": 0, "fn": 0})
 
-    for sample in dataset.iter_samples():
-        with Image.open(sample.image_path) as im:
-            bgr = _pil_to_bgr(im)
+    for sample, bgr in stream:
         preds = detector.predict(bgr)
         pred_boxes, pred_classes, pred_scores = _detections_to_arrays(preds)
         pred_classes = _map_classes(pred_classes, model_to_dataset)
@@ -352,6 +368,18 @@ def evaluate_baseline(
         conf_threshold=conf_threshold,
         iou_threshold=iou_threshold,
         split=dataset.split,
+    )
+
+
+def evaluate_baseline(
+    detector: Any,
+    dataset: YoloDataset,
+    *,
+    iou_threshold: float = 0.5,
+) -> EvaluationReport:
+    """Evaluate ``detector`` on ``dataset`` using the original, unmodified images."""
+    return _evaluate_stream(
+        detector, dataset, _default_stream(dataset), iou_threshold=iou_threshold
     )
 
 

@@ -143,6 +143,17 @@ child seed drawn from the request RNG, so a composition is reproducible from
 `jpeg_compression`. Logic is reused from the individual families — nothing is
 reimplemented.
 
+## Using transforms with the evaluator (Day 5)
+
+`failureforge.evaluation` is the supported integration point: it loads each
+sample as BGR, calls `apply(..., boxes=sample.boxes, seed=seed)`, and evaluates
+the transformed image against the transformed pixel boxes. Use
+`evaluate_perturbed` for Benchmark Mode (metric deltas vs shifted GT),
+`quick_mode` for label-free instability, and `run_severity_sweep` for explicit
+severity ladders. The legacy
+`evaluator.evaluate_samples(..., perturbation=...)` path (PIL + normalized boxes)
+is retained for compatibility/smoke tests only.
+
 ## Search space
 
 `failureforge.transforms.PARAM_RANGES` exposes the legacy

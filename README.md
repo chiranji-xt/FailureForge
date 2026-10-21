@@ -4,7 +4,7 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 4)
+## Development status (Day 5)
 
 - ✅ Day 1: project foundation (packaging, docs, smoke test).
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
@@ -22,9 +22,46 @@ finding the most damaging configurations — decided by experiment, not assumpti
   pixel-space ground-truth remapping for geometric/cropping ops. `transforms.py`
   is retained as a compatibility shim. Fully tested — **455 tests pass** across
   all modules, no weights/network required. See `docs/perturbations.md`.
-- ⏳ Days 5–15 per `docs/progress.md`: perturbation sweeps / Quick-vs-Benchmark
-  evaluation, search algorithms, and reporting are **planned, not yet verified**.
-  The quick-start and CLI sections below describe the planned workflow.
+- ✅ Day 5: **Perturbation→evaluation adapter** — `failureforge.evaluation`
+  adds **Benchmark Mode** (metric deltas vs transformed GT, baseline computed
+  once), **Quick Mode** (label-free prediction instability: disappeared,
+  appeared, class/confidence changes, box drift — never accuracy metrics), and
+  deterministic **severity sweeps** with attributable per-trial errors.
+  `evaluator.py` was refactored behind an unchanged `evaluate_baseline`.
+  Full suite: **474 tests pass**, CPU-only, no weights/network.
+- ⏳ Days 6–15 per `docs/progress.md`: failure records/gallery, search
+  algorithms, reporting, and CLI are **planned, not yet verified**. The
+  quick-start and CLI sections below describe the planned workflow.
+
+## Perturbation evaluation (Day 5)
+
+```python
+from failureforge.dataset import YoloDataset
+from failureforge.evaluation import evaluate_perturbed, quick_mode, run_severity_sweep
+
+ds = YoloDataset.from_config("data/data.yaml", split="val")
+
+# Benchmark Mode: labeled data, deltas are perturbed - baseline
+res = evaluate_perturbed(det, ds, "gaussian_noise", {"sigma": 25}, seed=0)
+print(res.deltas["f1"], res.deltas["map50"])
+print(res.to_dict())
+
+# Quick Mode: no label files needed; instability only (no accuracy claims)
+q = quick_mode(det, ds, "brightness", {"factor": 0.4})
+print(q.summary["disappeared"], q.summary["class_changed"])
+
+# Explicit severity ladder; reusable baseline; per-trial reproducible seeds
+sweep = run_severity_sweep(
+    det, ds, "gaussian_noise",
+    [{"sigma": s} for s in (5, 10, 20, 30)], seed=0,
+)
+```
+
+Transforms are applied with `sample.boxes` (pixel `GroundTruthBox` objects);
+geometric/cropping transforms therefore evaluate against correctly remapped
+ground truth. A failed sweep trial is recorded with its index/config/error
+instead of aborting the sweep (`strict=True` re-raises). Deltas are observations
+for one detector/dataset/seed, not proof of real-world failure.
 
 ## Perturbation engine (Day 4)
 
@@ -81,7 +118,7 @@ pip install -e ".[yolo]"      # Ultralytics YOLO inference
 pip install -e ".[dev]"       # tests + optuna
 ```
 
-## Planned quick-start (available once Days 2–14 land; not working on Day 1)
+## Planned quick-start (not yet working; CLI is Day 13)
 
 ```powershell
 # 1. create a tiny demo dataset
@@ -96,7 +133,7 @@ failureforge search --images data\images --labels data\labels --method both --bu
 failureforge report --input-dir results --output results\report.md
 ```
 
-## Planned CLI (Day 13; not implemented on Day 1)
+## Planned CLI (Day 13; not implemented)
 
 - `failureforge validate-data --images ... --labels ...`
 - `failureforge evaluate --images ... --labels ... [--weights best.pt] [--iou 0.5]`
@@ -104,15 +141,14 @@ failureforge report --input-dir results --output results\report.md
 - `failureforge report --input-dir results --output results/report.md`
 - Every command supports `--help`.
 
-## Testing (Day 1)
+## Testing
 
 ```powershell
-pytest tests/test_project.py -v
+pytest -q
 ```
 
-Smoke test only: verifies the package imports and exposes its version.
-The full module test suite arrives with its modules on Days 2–11 and runs
-CPU-only with synthetic fixtures (no weights or downloads).
+The suite is CPU-only and uses synthetic fixtures and mocked detectors (no
+weights, downloads, or network). Current status: **474 passed**.
 
 ## Limitations
 
