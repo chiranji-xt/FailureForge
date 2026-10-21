@@ -4,7 +4,7 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 5)
+## Development status (Day 6)
 
 - ✅ Day 1: project foundation (packaging, docs, smoke test).
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
@@ -20,7 +20,8 @@ finding the most damaging configurations — decided by experiment, not assumpti
   exposure, blur, weather, colour, occlusion, geometric, quality, shadows,
   lens, cropping, `combined`), seeded and reproducible, with correct
   pixel-space ground-truth remapping for geometric/cropping ops. `transforms.py`
-  is retained as a compatibility shim. Fully tested — **455 tests pass** across
+  is retained as a compatibility shim. Fully tested at Day 4 — **455 tests
+  passed** across
   all modules, no weights/network required. See `docs/perturbations.md`.
 - ✅ Day 5: **Perturbation→evaluation adapter** — `failureforge.evaluation`
   adds **Benchmark Mode** (metric deltas vs transformed GT, baseline computed
@@ -29,9 +30,40 @@ finding the most damaging configurations — decided by experiment, not assumpti
   deterministic **severity sweeps** with attributable per-trial errors.
   `evaluator.py` was refactored behind an unchanged `evaluate_baseline`.
   Full suite: **474 tests pass**, CPU-only, no weights/network.
-- ⏳ Days 6–15 per `docs/progress.md`: failure records/gallery, search
-  algorithms, reporting, and CLI are **planned, not yet verified**. The
+- ✅ Day 6: **Failure analysis & reporting** — `failureforge.failures` derives
+  six verified categories (`false_negative`, `false_positive`, `class_confusion`,
+  `localization_error`, `duplicate_detection`, `unmatched`) from evaluator
+  details without changing metrics, keeps Quick Mode separate as
+  prediction-instability records, and builds schema-versioned benchmark/quick
+  runs. `failureforge.reporting` writes NumPy/non-finite/path-safe JSON and a
+  dependency-free Markdown report with metric comparisons, family/operation
+  groups, severity ladders, rankings, and warnings. Full suite: **511 tests
+  pass**, CPU-only, no weights/network. See `docs/failure-analysis.md`.
+- ⏳ Days 7–15 per `docs/progress.md`: failure gallery, search algorithms,
+  objective definition, reports, and CLI are **planned, not yet verified**. The
   quick-start and CLI sections below describe the planned workflow.
+
+## Failure analysis & reporting (Day 6)
+
+```python
+from failureforge.failures import build_benchmark_run, build_quick_run
+from failureforge.reporting import render_markdown, write_report
+
+# res / q are Day-5 evaluate_perturbed(...) / quick_mode(...) results
+run = build_benchmark_run(res.baseline, [res])       # verified categories + deltas
+print(run.trials[0].failure_counts)                  # e.g. {'false_negative': 2, ...}
+write_report(run, "results/report")                  # JSON + Markdown, schema v1
+
+quick = build_quick_run(q)                           # instability only, no labels
+text = render_markdown(quick, rank_metric="f1")      # Quick ignores accuracy ranking
+```
+
+Benchmark reports rank perturbations by one metric drop (`baseline - perturbed`,
+default F1) and group by family/operation; severity ladders appear only when an
+operation's trials vary exactly one numeric parameter. Quick Mode never reports
+precision/recall/F1/mAP. Missing or incompatible metrics are not ranked and are
+listed as warnings. Absolute paths are redacted in JSON unless explicitly
+requested. Full schema and category rules: `docs/failure-analysis.md`.
 
 ## Perturbation evaluation (Day 5)
 
@@ -148,7 +180,7 @@ pytest -q
 ```
 
 The suite is CPU-only and uses synthetic fixtures and mocked detectors (no
-weights, downloads, or network). Current status: **474 passed**.
+weights, downloads, or network). Current status: **511 passed**.
 
 ## Limitations
 

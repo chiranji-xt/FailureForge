@@ -189,10 +189,81 @@ Known issues / notes:
 - Sweeps only cover caller-supplied configurations; automatic random/TPE search
   is still Days 9–10.
 - `annotations.py` + `tests/test_annotations.py` remain an untracked preview and
-  are not wired into this adapter; annotation-correctness checks are moved to
-  Day 6.
+  are not wired into this adapter; annotation-correctness checks were carried
+  forward beyond Day 6.
 - `cli.py` remains stale (pre-Day-3 `load_detector`/`summarize` API), so no CLI
   commands are exposed. Reporting/failure records remain Days 7–13.
+- No benchmark results are claimed.
+
+## Day 6 — Failure analysis, categorization & reporting (2026-10-21): DONE
+
+Objective: explain verified benchmark errors and prediction instability on top of
+Day 5, without rewriting the detector, dataset, perturbation engine, or
+evaluation logic.
+
+- [x] Inspection: clean tree (only known untracked previews), HEAD `2d0cbf8`,
+      full suite **474 passed** before changes. Found `failures.py`/`reporting.py`
+      stale (normalized YOLO dicts + old search bundle) and replaced them.
+- [x] Evaluator additive change: matched-pair details now include `gt_box` and
+      `pred_box` (rounded). No matching, metric, or report-calculation logic
+      changed; existing tests stayed green.
+- [x] Rewrote `src/failureforge/failures.py`:
+  - Six verified categories: `false_negative`, `false_positive`,
+    `class_confusion`, `localization_error`, `duplicate_detection`,
+    `unmatched`. Each record keeps image, GT/pred indices, classes, boxes,
+    score, IoU, thresholds, and metric role (`counts_as`).
+  - Reuses evaluator diagnostics and matching. Defaults: match IoU 0.50,
+    localization threshold 0.75. Duplicates are extra same-class predictions
+    covering a GT already claimed by the primary detection.
+  - One record per unmatched GT/prediction with documented priority
+    duplicate > class confusion > localization > background FP > unmatched;
+    matched localization errors remain TP aspects, so metrics never change.
+  - Handles empty labels/predictions, unmapped prediction classes, low-overlap
+    ambiguity, and GT already matched by another class. Raises `AnalysisError`
+    when per-image details are incomplete instead of misclassifying.
+  - Quick Mode records (`disappeared`, `appeared`, `class_changed`,
+    `confidence_changed`, `box_drift`) are built in a separate structure labelled
+    `prediction_instability` / `verified_failures: false`; no accuracy metrics.
+  - Schema-versioned run records (`BenchmarkRun`, `QuickRun`), per-trial metric
+    comparison with missing/non-finite → `None`, compatibility checks
+    (IoU/aggregation), and environment metadata.
+- [x] Rewrote `src/failureforge/reporting.py`:
+  - `json_safe` handles NumPy scalars/arrays, sets, `Path`, and non-finite
+    floats (→ `null`); JSON always carries `schema_version`; absolute paths are
+    reduced to basenames unless `include_absolute_paths=True`.
+  - Ranking uses exactly one metric (`precision`/`recall`/`f1`/`map50`) with
+    `drop = baseline − perturbed`; missing and incompatible trials are unranked.
+  - Markdown: scope/reproducibility, baseline metrics, ranked trials,
+    family/operation groups, severity ladders (single numeric parameter only),
+    failure counts (baseline, trial sum, top-ranked trials), warnings, and
+    limitations. Quick reports show instability counts/per-image only.
+  - Writers: `write_json_report`, `write_markdown_report`, `write_report`.
+- [x] New `tests/test_failures.py` (23) and `tests/test_reporting.py` (14):
+      every category, exact IoU boundary, configurable localization threshold,
+      duplicates, empty GT/predictions, ambiguity, incomplete details,
+      Quick separation/no labels, no-mutation, NumPy/non-finite JSON, path
+      redaction, ranking/ties/missing/incompatible, groups, ladders, stable
+      Markdown, writers.
+- [x] Full suite: **511 passed** (was 474), CPU-only, no weights/network.
+- [x] Docs: new `docs/failure-analysis.md` (categories, rules, schema, JSON
+      policy, API, limitations); updated README, `architecture.md`,
+      `mvp-spec.md`, and this log.
+
+Known issues / notes:
+
+- CSV failure/trial export and the visual gallery are **not** implemented; the
+  modular CSV writer from the stale preview was intentionally removed.
+- `annotations.py` + `tests/test_annotations.py` remain an untracked preview;
+  annotation-correctness checks are outstanding (Day 7).
+- `cli.py` remains stale and is not wired; no CLI commands are exposed.
+- Class confusion relies on the evaluator's `wrong_class` diagnostic; duplicate
+  detection is same-class only (different-class extras become class confusion or
+  unmatched). Localization of matched detections is diagnostic and remains TP.
+- Quick Mode has no ground truth; its counts are never accuracy degradation.
+- Dataset identity is split/counts/class names (plus redacted root); no dataset
+  content hash is computed.
+- Rankings use one metric at a time and single-seed results are noisy; no
+  universal damage claim is made.
 - No benchmark results are claimed.
 
 ## 15-day roadmap (planned milestones, not completed features)
@@ -202,9 +273,9 @@ Known issues / notes:
 - Day 3: Dataset loading, validation & baseline evaluation. ✅
 - Day 4: Robustness perturbation engine (all 12 families) + tests. ✅
 - Day 5: Perturbation→evaluation adapter, Benchmark/Quick Mode, severity sweeps. ✅
-- Day 6: Evaluation engine and metrics (revisited with the perturbation layer;
-  annotation-correctness checks).
-- Day 7: Failure records and visual gallery.
+- Day 6: Failure analysis, verified categories, Quick instability records,
+  schema-versioned JSON/Markdown reporting. ✅
+- Day 7: Failure gallery + annotation-correctness checks.
 - Day 8: Perturbation sweeps and objective definition.
 - Day 9: Random search.
 - Day 10: Optuna TPE search.
@@ -216,14 +287,14 @@ Known issues / notes:
 
 ## Next recommended task
 
-Revisit metrics/matching under the perturbation layer and define the objective
-(Days 6–8):
+Define the search objective and add the failure gallery/annotation checks
+(Days 7–8):
 
-1. Verify annotation correctness end-to-end (wire the untracked `annotations.py`
-   preview or fold its checks into dataset/transform tests) and document the
-   geometric/cropping assumptions.
-2. Define the search objective (`baseline − perturbed`, higher = more damaging)
-   and the failure-record schema so search results are attributable to
-   configurations, seeds, and images.
-3. Keep the CLI disabled (Day 13) and continue reusing
-   `evaluate_baseline`/`_evaluate_stream` rather than reimplementing evaluation.
+1. Wire or fold the untracked `annotations.py` preview into dataset/transform
+   tests and document geometric/cropping annotation assumptions.
+2. Add a visual failure gallery and (if still useful) CSV export, consuming the
+   Day-6 run records without duplicating analysis.
+3. Define the `baseline − perturbed` objective and trial schema for Days 9–10,
+   reusing `failure_counts`, `drops`, transformation config, and seeds.
+4. Keep the CLI disabled (Day 13); continue reusing the evaluator and analysis
+   layers rather than reimplementing matching/metrics.

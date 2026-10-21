@@ -22,10 +22,10 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `metrics.py` | Greedy confidence-sorted class-aware IoU matching; corpus mAP50 |
 | `evaluator.py` | Baseline evaluation over a `(sample, bgr)` stream; unchanged public `evaluate_baseline` |
 | `evaluation.py` | Perturbation→evaluation adapter: Benchmark Mode (deltas vs transformed GT), label-free Quick Mode (instability), severity sweeps |
-| `failures.py` | Failure records (CSV/JSON) + visual gallery |
+| `failures.py` | Verified failure categories + Quick instability records + schema-versioned benchmark/quick runs; gallery planned Day 7 |
 | `search/random_search.py` | Seeded uniform sampling over the shared search space |
 | `search/tpe_search.py` | Optuna TPESampler over the same space/objective |
-| `reporting.py` | Markdown report distinguishing observation from conclusion |
+| `reporting.py` | Schema-versioned JSON (NumPy/non-finite/path-safe) + dependency-free Markdown with ranking, groups, ladders, warnings |
 | `cli.py` | `validate-data`, `evaluate`, `search`, `report` commands |
 
 `perturbations/` submodules group the 12 families: `photometric.py` (noise,
@@ -36,19 +36,28 @@ core/registry in `base.py` and box maths in `boxops.py`. See
 
 ## Implemented vs planned
 
-- **Implemented (Days 1–5):** project foundation, `detector.py` (inference-only
+- **Implemented (Days 1–6):** project foundation, `detector.py` (inference-only
   `YOLODetector`), `dataset.py`/`metrics.py`/`evaluator.py` (baseline
   evaluation), the `perturbations/` engine (12 families) with a `transforms.py`
-  compatibility shim, and `evaluation.py` (Benchmark/Quick Mode + severity
-  sweeps).
-- **Planned (Days 6–15):** failure records/gallery, search comparison, objective
-  definition, reporting, and CLI integration, implemented and verified one stage
-  at a time per `progress.md`.
+  compatibility shim, `evaluation.py` (Benchmark/Quick Mode + severity sweeps),
+  and `failures.py`/`reporting.py` (verified failure analysis, instability
+  records, JSON/Markdown reports).
+- **Planned (Days 7–15):** failure gallery, search comparison, objective
+  definition, remaining reporting, and CLI integration, implemented and verified
+  one stage at a time per `progress.md`.
 
 The evaluation adapter does not reimplement evaluation: it builds a stream of
 `(transformed_sample, bgr)` pairs and passes it to the evaluator's shared
 `_evaluate_stream`. Quick Mode uses the same prediction dataclasses but
 location-matches clean vs perturbed outputs without reading labels.
+
+Failure analysis consumes only serialized evaluator details (`matches`,
+`missed`, `false_positives`). It verifies that per-image detail counts match
+`num_gt`/`num_pred` and raises `AnalysisError` rather than guessing. Category
+records never alter TP/FP/FN; a matched localization error is an aspect of a
+true positive. Reporting consumes run records only and never mutates them.
+See `docs/failure-analysis.md` for categories, thresholds, schema, and
+limitations.
 
 ## Dependency boundaries
 

@@ -258,6 +258,8 @@ def _evaluate_stream(
             "class_id": int(gt_classes[gi]),
             "class_name": dataset.class_name(int(gt_classes[gi])),
             "score": float(pred_scores[pi]),
+            "gt_box": [round(float(x), 3) for x in gt_boxes[gi]],
+            "pred_box": [round(float(x), 3) for x in pred_boxes[pi]],
         } for pi, gi, v in res.matches]
 
         missed = [{
