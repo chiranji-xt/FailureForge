@@ -62,9 +62,10 @@ the engine specs.
   per-trial seeds and record failures per trial instead of aborting.
 
 Deltas are observations for a fixed detector/dataset/seed, not proof of a
-real-world failure. The search objective (deterioration `baseline − perturbed`,
-higher = more damaging) remains planned for Days 8–10 so neither search method is
-rewarded for invalid annotations or bugs.
+real-world failure. The Day-8 objective defines the signed search score
+(deterioration `baseline − perturbed`, higher = more damaging); search
+algorithms remain planned for Days 9–10 so neither method is rewarded for
+invalid annotations or bugs.
 
 ## Failure analysis & reporting (Day 6, implemented)
 
@@ -113,6 +114,23 @@ rewarded for invalid annotations or bugs.
   mismatches, and duplicate/overlap warnings. Invalid annotations are never
   repaired silently.
 
+## Search objective (Day 8, implemented)
+
+- `failureforge.objective` compares compatible `EvaluationReport` objects
+  without inference. The default metric is F1; `precision`, `recall`, `f1`, and
+  `map50` are supported one at a time, and every supported metric is
+  higher-is-better. No weights or multi-metric combination are used.
+- The score is signed degradation, `baseline − perturbed`: zero means no change,
+  positive means worse, and negative means improvement. Future search maximizes
+  this value.
+- Results expose metric, direction, baseline/perturbed values, degradation,
+  compatibility, validity, and warnings. Missing/non-finite metrics and
+  incompatible IoU/aggregation settings are invalid with no score; zero is never
+  substituted. Warning-only split/confidence/image-count differences retain the
+  warning but may remain usable under `compare_reports` semantics.
+- Failure counts and Quick Mode instability are separate concepts and are not
+  folded into this objective. Random Search and Optuna/TPE remain unimplemented.
+
 ## Search comparison (planned)
 
 - Random search and Optuna TPE share the search space, trial budget,
@@ -150,6 +168,9 @@ CSV trial export remains planned.
   missing-vs-empty files, and never mutates/repairs labels.
 - The gallery is offline, HTML-escaped, uses relative artifact paths, and does
   not call Quick instability a verified failure or claim missing overlays.
+- The search objective is deterministic, uses one existing metric, preserves
+  signed improvements, and returns an invalid result (never zero) for missing,
+  non-finite, or incompatible report comparisons.
 - Both searches run against a deterministic test objective and record trials.
 - Report generation works from saved results.
 - CI installs the project and runs the core test suite.

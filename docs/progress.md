@@ -333,6 +333,53 @@ Known issues / notes:
 - `cli.py` remains stale and is not wired.
 - No benchmark results are claimed.
 
+## Day 8 — Deterministic search objective (2026-10-22): DONE
+
+Objective: define, implement, test, and document the scalar robustness score
+future search algorithms will maximize, without implementing search itself.
+
+- [x] Inspection: branch `main`, HEAD `1690589`, remote in sync; full suite
+      **534 passed** before changes. Reviewed evaluator report fields, Benchmark
+      deltas, `compare_reports`, reporting rankings, tests, and docs.
+- [x] Added `src/failureforge/objective.py`:
+  - `ObjectiveConfig(metric="f1")` supports exactly `precision`, `recall`, `f1`,
+    and `map50`; invalid names raise `ValueError`. No weights or multi-objective
+    composition.
+  - `evaluate_objective(baseline, perturbed, config=...)` returns an
+    `ObjectiveResult` with metric, explicit `higher_is_better` direction,
+    baseline/perturbed values, signed `degradation`, `compatible`, `valid`, and
+    warnings.
+  - Score is `baseline − perturbed`; zero = unchanged, positive = worse,
+    negative = improvement. Larger is always worse, so search maximizes it.
+  - Delegates metric extraction/compatibility warnings to the existing
+    `failures.compare_reports`; matching and metric semantics are unchanged.
+  - Missing/non-finite metrics and incompatible IoU/aggregation settings produce
+    `valid=False` and `degradation=None`, never a zero score. Valid zero remains
+    distinct. Warning-only split/confidence/image-count differences preserve
+    warnings and existing compatibility behavior.
+  - `to_dict()` is deterministic and JSON-safe; computation needs no inference.
+- [x] Added `tests/test_objective.py` (19 tests): default/explicit metric,
+      equal/positive/negative degradation, all four metrics, selected-metric
+      isolation, invalid config, missing aggregate/mAP metrics, NaN/inf,
+      incompatible IoU/aggregation, combined missing+incompatible, warning-only
+      differences, invalid-vs-valid-zero, deterministic JSON output.
+- [x] Full suite: **553 passed** (was 534), CPU-only, no weights/network.
+- [x] Docs: new `docs/objective.md`; updated README, `docs/architecture.md`,
+      `docs/mvp-spec.md`, and this log.
+
+Known issues / notes:
+
+- The objective supports one higher-is-better metric at a time; no multi-objective
+  score, seed aggregation, variance estimate, or confidence interval.
+- Split/confidence/image-count differences remain warnings rather than hard
+  incompatibilities, matching `compare_reports`; only IoU/aggregation differences
+  force `compatible=False`.
+- Failure counts and Quick Mode instability are intentionally not part of the
+  objective.
+- Random Search, Optuna/TPE, confirmation evaluation, CSV export, and CLI
+  integration remain unimplemented.
+- No benchmark results are claimed.
+
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
@@ -343,7 +390,7 @@ Known issues / notes:
 - Day 6: Failure analysis, verified categories, Quick instability records,
   schema-versioned JSON/Markdown reporting. ✅
 - Day 7: Failure gallery + annotation-correctness checks. ✅
-- Day 8: Search objective definition and search-space preparation.
+- Day 8: Deterministic search objective over existing evaluation metrics. ✅
 - Day 9: Random search.
 - Day 10: Optuna TPE search.
 - Day 11: Multi-seed comparison and confirmation evaluation.
@@ -354,15 +401,16 @@ Known issues / notes:
 
 ## Next recommended task
 
-Define the search objective and prepare the shared search space (Day 8):
+Implement seeded Random Search over the shared perturbation search space
+(Day 9), consuming the Day-8 objective:
 
-1. Specify the scalar objective from `baseline − perturbed` (one documented
-   metric, finite-only, compatible-baseline requirement) and the trial record
-   fields needed for attributable comparisons.
-2. Define one search-space representation shared by random search and TPE,
-   reusing perturbation `param_specs()`/ranges and per-trial seed derivation;
-   do not run or claim either search yet.
-3. Add tests for objective direction, missing/non-finite values, incompatible
-   trials, deterministic seeds, and budget accounting on a mock objective.
-4. Keep CSV export/CLI for later; continue consuming Day-6/7 records rather than
-   reimplementing analysis or gallery logic.
+1. Define one search-space representation from existing perturbation parameter
+   specifications/ranges and deterministic per-trial seed derivation.
+2. Evaluate candidates through the existing Benchmark adapter, build the
+   objective with one shared baseline, and record every trial (configuration,
+   seed, score, validity/warnings, timing, and failures).
+3. Rank only valid objectives; record invalid trials explicitly and never treat
+   them as zero degradation.
+4. Add CPU-only mock/synthetic tests for budget, determinism, sampling bounds,
+   invalid-trial handling, and best-trial selection. Do not implement TPE yet;
+   keep CSV export and CLI integration for their scheduled days.

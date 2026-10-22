@@ -1,4 +1,4 @@
-# FailureForge — architecture (implemented Days 1–7; Days 8–15 planned)
+# FailureForge — architecture (implemented Days 1–8; Days 9–15 planned)
 
 ## Implemented data flow
 
@@ -23,6 +23,7 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `evaluator.py` | Baseline evaluation over a `(sample, bgr)` stream; unchanged public `evaluate_baseline` |
 | `evaluation.py` | Perturbation→evaluation adapter: Benchmark Mode (deltas vs transformed GT), label-free Quick Mode (instability), severity sweeps |
 | `failures.py` | Verified failure categories + Quick instability records + schema-versioned benchmark/quick runs |
+| `objective.py` | Deterministic signed metric degradation (`baseline - perturbed`) for future search; validates selected metric, finite values, and report compatibility |
 | `search/random_search.py` | Seeded uniform sampling over the shared search space |
 | `search/tpe_search.py` | Optuna TPESampler over the same space/objective |
 | `reporting.py` | Schema-versioned JSON (NumPy/non-finite/path-safe) + dependency-free Markdown with ranking, groups, ladders, warnings |
@@ -37,16 +38,17 @@ core/registry in `base.py` and box maths in `boxops.py`. See
 
 ## Implemented vs planned
 
-- **Implemented (Days 1–7):** project foundation, `detector.py` (inference-only
+- **Implemented (Days 1–8):** project foundation, `detector.py` (inference-only
   `YOLODetector`), `dataset.py`/`metrics.py`/`evaluator.py` (baseline
   evaluation), the `perturbations/` engine (12 families) with a `transforms.py`
   compatibility shim, `evaluation.py` (Benchmark/Quick Mode + severity sweeps),
   `failures.py`/`reporting.py` (verified failure analysis, instability records,
-  JSON/Markdown reports), `gallery.py` (offline HTML failure gallery), and
-  `annotations.py` (read-only annotation validation).
-- **Planned (Days 8–15):** search objective/algorithms, independent
-  confirmation, remaining exports, and CLI integration, implemented and verified
-  one stage at a time per `progress.md`.
+  JSON/Markdown reports), `gallery.py` (offline HTML failure gallery),
+  `annotations.py` (read-only annotation validation), and `objective.py`
+  (deterministic signed metric degradation for future search).
+- **Planned (Days 9–15):** search algorithms, independent confirmation,
+  remaining exports, and CLI integration, implemented and verified one stage at
+  a time per `progress.md`.
 
 The evaluation adapter does not reimplement evaluation: it builds a stream of
 `(transformed_sample, bgr)` pairs and passes it to the evaluator's shared
@@ -67,6 +69,12 @@ relative names. Without an artifact it renders an explicitly labelled box
 diagram instead of claiming an image overlay. Annotation validation reads label
 files and image dimensions without modifying dataset state. See
 `docs/gallery.md` and `docs/annotations.md`.
+
+The objective consumes two `EvaluationReport` objects and delegates comparison
+to `failures.compare_reports`. It is not a failure counter or Quick Mode
+instability score: it reports signed degradation for one selected metric and
+marks missing, non-finite, or incompatible comparisons invalid. See
+`docs/objective.md`.
 
 ## Dependency boundaries
 

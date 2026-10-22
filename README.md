@@ -4,7 +4,7 @@ Reproducible robustness testing for YOLO object detectors. Evaluates a detector
 under controlled perturbations and compares **random search vs Optuna TPE** at
 finding the most damaging configurations — decided by experiment, not assumption.
 
-## Development status (Day 7)
+## Development status (Day 8)
 
 - ✅ Day 1: project foundation (packaging, docs, smoke test).
 - ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
@@ -48,9 +48,35 @@ finding the most damaging configurations — decided by experiment, not assumpti
   missing-vs-empty files, non-finite/out-of-range geometry, class IDs, invalid
   sizes, canvas mismatches, and overlap warnings. Full suite: **534 tests pass**,
   CPU-only, no weights/network. See `docs/gallery.md` and `docs/annotations.md`.
-- ⏳ Days 8–15 per `docs/progress.md`: search objective/algorithms, independent
+- ✅ Day 8: **Deterministic search objective** — `failureforge.objective` compares
+  compatible evaluation reports for one existing metric (`precision`, `recall`,
+  `f1`, or `map50`). Signed degradation is `baseline − perturbed`, so larger is
+  worse and improvements are negative. Missing/non-finite values and
+  incompatible reports return invalid results with no score, never zero. Full
+  suite: **553 tests pass**, CPU-only, no weights/network. See
+  `docs/objective.md`. Random Search and Optuna/TPE are not yet implemented.
+- ⏳ Days 9–15 per `docs/progress.md`: search algorithms, independent
   confirmation, CSV export, and CLI are **planned, not yet verified**. The
   quick-start and CLI sections below describe the planned workflow.
+
+## Search objective (Day 8)
+
+```python
+from failureforge.objective import ObjectiveConfig, evaluate_objective
+
+result = evaluate_objective(
+    res.baseline, res.perturbed,
+    config=ObjectiveConfig(metric="f1"),   # default metric is f1
+)
+if result.valid:
+    score = result.degradation             # maximize; negative means improvement
+else:
+    print(result.warnings)                 # missing/non-finite/incompatible
+```
+
+The objective performs no inference. Failure counts and Quick Mode instability
+are intentionally separate and never folded into the score. See
+`docs/objective.md` for compatibility and validity rules.
 
 ## Failure gallery & annotation checks (Day 7)
 
@@ -214,7 +240,7 @@ pytest -q
 ```
 
 The suite is CPU-only and uses synthetic fixtures and mocked detectors (no
-weights, downloads, or network). Current status: **534 passed**.
+weights, downloads, or network). Current status: **553 passed**.
 
 ## Limitations
 
