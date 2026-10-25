@@ -20,6 +20,7 @@ preserved by sorting ranked trials, groups, and record lists.
 """
 from __future__ import annotations
 
+import csv
 import json
 import math
 import re
@@ -672,3 +673,50 @@ def write_report(
             title=title, rank_metric=rank_metric,
         )
     return paths
+
+
+# ---------------------------------------------------------------------------
+# CSV failure export
+# ---------------------------------------------------------------------------
+
+def csv_safe(value: Any) -> str:
+    """Text for a CSV cell with spreadsheet-formula injection neutralized."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+FAILURE_CSV_COLUMNS = (
+    "trial", "transform", "params", "seed", "category", "counts_as", "image",
+    "gt_class", "pred_class", "gt_box", "pred_box", "score", "iou", "reason",
+)
+
+
+def write_failures_csv(run: BenchmarkRun, path: str | Path) -> Path:
+    """One row per verified failure record (baseline = trial ``baseline``).
+
+    Benchmark runs only: Quick Mode instability is not a verified failure and is
+    never written here.
+    """
+    if not isinstance(run, BenchmarkRun):
+        raise ValueError("failure CSV is only available for benchmark runs")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    groups = [("baseline", run.baseline)] + [(str(i), t) for i, t in enumerate(run.trials)]
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(FAILURE_CSV_COLUMNS)
+        for label, record in groups:
+            tr = record.transformation or {}
+            for f in record.failures:
+                writer.writerow([
+                    label, csv_safe(tr.get("name")),
+                    csv_safe(json.dumps(json_safe(tr.get("params")), sort_keys=True) if tr else ""),
+                    tr.get("seed", ""), csv_safe(f.category), f.counts_as, csv_safe(f.image),
+                    csv_safe(f.gt_class_name), csv_safe(f.pred_class_name),
+                    json.dumps(json_safe(f.gt_box)) if f.gt_box else "",
+                    json.dumps(json_safe(f.pred_box)) if f.pred_box else "",
+                    "" if f.score is None else repr(float(f.score)),
+                    "" if f.iou is None else repr(float(f.iou)),
+                    csv_safe(f.reason),
+                ])
+    return path

@@ -5,7 +5,7 @@ import csv
 import json
 from pathlib import Path
 
-from ..reporting import json_safe
+from ..reporting import csv_safe, json_safe
 from .confirm import ConfirmationResult
 from .trials import SearchResult
 
@@ -40,12 +40,6 @@ def search_payload(
     return json_safe(payload)
 
 
-def _cell(text: object) -> str:
-    """Neutralize spreadsheet-formula injection in CSV text cells."""
-    s = "" if text is None else str(text)
-    return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
-
-
 def write_trials_csv(result: SearchResult, path: str | Path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -54,11 +48,11 @@ def write_trials_csv(result: SearchResult, path: str | Path) -> Path:
         writer.writerow(CSV_COLUMNS)
         for t in result.trials:
             writer.writerow([
-                t.index, t.status, _cell(t.name), _cell(t.family), t.seed,
+                t.index, t.status, csv_safe(t.name), csv_safe(t.family), t.seed,
                 "" if t.score is None else repr(t.score), result.objective.metric,
                 "" if t.baseline_value is None else repr(t.baseline_value),
                 "" if t.perturbed_value is None else repr(t.perturbed_value),
-                _cell(json.dumps(t.params, sort_keys=True)), _cell(t.error),
+                csv_safe(json.dumps(t.params, sort_keys=True)), csv_safe(t.error),
             ])
     return path
 
