@@ -266,6 +266,8 @@ def cmd_search(args: argparse.Namespace, factory: DetectorFactory) -> int:
     best = result.best
     print(f"{method}: {c['valid']}/{c['total']} valid trials "
           f"({c['invalid']} invalid, {c['error']} errored)")
+    for w in result.warnings:
+        print(f"warning: {w}", file=sys.stderr)
     if best is not None:
         print(f"best: {best.name} {best.params} {metric} degradation={best.score:.4f}")
     else:

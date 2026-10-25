@@ -13,8 +13,10 @@ from typing import Any, Iterable, Mapping
 
 from ..perturbations import available, get, validate_params
 
-#: Excluded by default: needs a caller-supplied ordered ``steps`` list.
-DEFAULT_EXCLUDED = ("combined",)
+#: Excluded by default. ``combined`` needs a caller-supplied ordered ``steps``
+#: list; ``blur`` is the legacy alias of ``gaussian_blur`` (identical output on a
+#: narrower range) and would double that operation's sampling probability.
+DEFAULT_EXCLUDED = ("combined", "blur")
 
 #: Integer parameters the engine only accepts as odd values (not expressible in
 #: ``ParamSpec``), so they are sampled on a step-2 grid.

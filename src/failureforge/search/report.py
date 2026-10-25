@@ -84,6 +84,8 @@ def render_search_markdown(
         f"{c['invalid']} invalid, {c['error']} errored", "",
     ]
     best = result.best
+    if result.warnings:
+        lines += ["## Warnings", ""] + [f"- {w}" for w in result.warnings] + [""]
     lines += ["## Best trial", ""]
     if best is None:
         lines.append("No valid trial: nothing is ranked.")

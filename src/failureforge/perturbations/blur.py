@@ -44,14 +44,14 @@ def _motion_blur(ctx: Context):
     w, h = pil.size
     t = np.deg2rad(angle)
     dx, dy = float(np.cos(t)), float(np.sin(t))
-    acc = np.zeros((h, w, 3), dtype=np.float64)
+    acc = np.zeros((h, w, 3), dtype=np.uint32)  # exact integer sums (<= 31 * 255)
     half = kernel_size // 2
     for i in range(kernel_size):
         off = i - half
         shifted = warp_affine(pil, translate_forward(off * dx, off * dy), (w, h))
-        acc += np.asarray(shifted, dtype=np.float64)
-    acc /= float(kernel_size)
-    return _keep(ctx, pil_to_bgr(Image.fromarray(clip_u8(acc), mode="RGB")),
+        acc += np.asarray(shifted)
+    mean = acc / float(kernel_size)
+    return _keep(ctx, pil_to_bgr(Image.fromarray(clip_u8(mean), mode="RGB")),
                  kernel_size=kernel_size, angle=angle)
 
 

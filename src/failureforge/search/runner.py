@@ -27,6 +27,30 @@ def baseline_metrics(report: EvaluationReport) -> dict:
     }
 
 
+def search_warnings(result: SearchResult) -> list[str]:
+    """Conditions under which scores cannot support a robustness conclusion."""
+    metric = result.objective.metric
+    base = result.baseline_metrics.get(metric)
+    warnings: list[str] = []
+    if base is None or base <= 0.0:
+        warnings.append(
+            f"baseline {metric} is {base}: the detector has nothing to lose on this "
+            "split, so every score is <= 0 and the search is uninformative "
+            "(check the weights, class mapping, and labels)"
+        )
+    elif 0 < base < 0.1:
+        warnings.append(
+            f"baseline {metric} is very low ({base:.3f}); degradation is bounded by "
+            "that value and scores are hard to compare"
+        )
+    scores = [t.score for t in result.trials if t.valid]
+    if scores and max(scores) <= 0.0 and base and base > 0:
+        warnings.append("no trial degraded the metric (best score <= 0)")
+    if not scores:
+        warnings.append("no valid trial: nothing is ranked")
+    return warnings
+
+
 def check_budget(budget: int) -> int:
     if isinstance(budget, bool) or not isinstance(budget, int) or budget < 1:
         raise ValueError(f"budget must be a positive integer, got {budget!r}")
@@ -92,9 +116,11 @@ class TrialRunner:
             "seed_derivation": "sha256(base_seed|index|name|params)",
         }
         meta.update(extra or {})
-        return SearchResult(
+        result = SearchResult(
             method=method, seed=int(seed), budget=int(budget),
             objective=self.objective, iou_threshold=self.iou_threshold,
             space=space.describe(), trials=trials,
             baseline_metrics=baseline_metrics(self.baseline), metadata=meta,
         )
+        result.warnings = search_warnings(result)
+        return result

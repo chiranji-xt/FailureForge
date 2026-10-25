@@ -296,3 +296,31 @@ def test_compare_validation(det, ds, kw):
 
     with pytest.raises(ValueError):
         compare_methods(det, ds, **kw)
+
+
+# ------------------------------------------------- validity warnings / space
+
+def test_default_space_excludes_duplicate_blur_alias():
+    assert "blur" not in SearchSpace.default().names
+    assert "gaussian_blur" in SearchSpace.default().names
+    assert SearchSpace.default(include=["blur"]).names == ["blur"]  # explicit opt-in
+
+
+def test_uninformative_search_is_flagged(ds, tmp_path):
+    class Blind(ColorBlobDetector):  # never detects anything -> baseline f1 == 0
+        def predict(self, image_bgr):
+            return super().predict(image_bgr * 0)
+
+    r = run_random_search(Blind(), ds, budget=3, seed=0,
+                          space=SearchSpace.default(include=["darken"]))
+    assert r.baseline_metrics["f1"] == 0.0
+    assert any("uninformative" in w for w in r.warnings)
+    assert "## Warnings" in render_search_markdown(r)
+    assert r.to_dict()["warnings"] == r.warnings
+
+
+def test_healthy_search_has_no_baseline_warning(det, ds):
+    r = run_random_search(det, ds, budget=3, seed=0,
+                          space=SearchSpace.default(include=["darken"],
+                                                    overrides={"darken": {"factor": (0.0, 0.05)}}))
+    assert r.warnings == []

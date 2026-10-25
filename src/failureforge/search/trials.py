@@ -92,6 +92,7 @@ class SearchResult:
     trials: list[SearchTrial]
     baseline_metrics: dict
     metadata: dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     def ranked(self, *, unique: bool = False) -> list[SearchTrial]:
         return rank_trials(self.trials, unique=unique)
@@ -126,4 +127,5 @@ class SearchResult:
             "best": best.to_dict() if best else None,
             "trials": [t.to_dict() for t in self.trials],
             "metadata": self.metadata,
+            "warnings": list(self.warnings),
         }

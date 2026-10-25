@@ -35,16 +35,23 @@ def _rain(ctx: Context):
     out = to_float(ctx.image) * (1.0 - 0.2 * intensity)
     n = int(intensity * min(w, h))
     max_len = max(6, min(w, h) // 4)
-    for _ in range(n):
+    hits = np.zeros(h * w, dtype=np.int64)
+    for _ in range(n):  # RNG draw order is part of the seeded contract
         x0 = int(ctx.rng.integers(0, w))
         y0 = int(ctx.rng.integers(0, h))
         length = int(ctx.rng.integers(5, max_len + 1))
         slant = max(1, length // 3)
-        for t in range(length):
-            x = x0 + (t * slant) // length
-            y = y0 + t
-            if 0 <= x < w and 0 <= y < h:
-                out[y, x] = np.minimum(255.0, out[y, x] + 170.0)
+        t = np.arange(length)
+        x = x0 + (t * slant) // length
+        y = y0 + t
+        ok = (x >= 0) & (x < w) & (y >= 0) & (y < h)
+        np.add.at(hits, y[ok] * w + x[ok], 1)
+    # A pixel hit once gains +170 (capped at 255); hit twice or more is always 255
+    # (255 + 170 caps at 255 and 0 + 340 > 255), matching the sequential result.
+    hits = hits.reshape(h, w)
+    once, many = hits == 1, hits >= 2
+    out[once] = np.minimum(255.0, out[once] + 170.0)
+    out[many] = 255.0
     return _keep(ctx, clip_u8(out), intensity=intensity, streaks=n)
 
 
