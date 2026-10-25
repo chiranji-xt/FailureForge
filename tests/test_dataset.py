@@ -204,3 +204,31 @@ def test_split_dataset_deterministic(tmp_path):
     a2, b2 = split_dataset(samples, 0.5, seed=7)
     assert [s.image_path.name for s in a1] == [s.image_path.name for s in a2]
     assert len(a1) == 2 and len(b1) == 2
+
+
+def test_iteration_rejects_missing_label_by_default(tmp_path):
+    root = _make_config_dataset(tmp_path, splits=("test",), n=1)
+    (root / "labels" / "test" / "test0.txt").unlink()
+    ds = YoloDataset.from_config(root / "data.yaml")
+    with pytest.raises(DatasetError, match="missing label"):
+        list(ds.iter_samples())
+
+
+def test_iteration_allows_missing_label_when_opted_in(tmp_path):
+    root = _make_config_dataset(tmp_path, splits=("test",), n=1)
+    (root / "labels" / "test" / "test0.txt").unlink()
+    ds = YoloDataset.from_config(root / "data.yaml", allow_missing_labels=True)
+    (sample,) = list(ds.iter_samples())
+    assert sample.boxes == [] and sample.label_path is None
+
+
+def test_partition_is_disjoint_deterministic_and_nonempty(tmp_path):
+    root = _make_config_dataset(tmp_path, splits=("test",), n=6)
+    ds = YoloDataset.from_config(root / "data.yaml")
+    a, b = ds.partition(0.33, seed=1)
+    a2, b2 = ds.partition(0.33, seed=1)
+    assert set(a.image_paths).isdisjoint(b.image_paths)
+    assert len(a) + len(b) == len(ds) and len(b) == 2
+    assert a.image_paths == a2.image_paths and b.image_paths == b2.image_paths
+    with pytest.raises(DatasetError):
+        ds.partition(1.0)

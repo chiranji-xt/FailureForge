@@ -171,3 +171,10 @@ def test_detections_rejects_inconsistent_lengths():
         Detections(boxes_xyxy=np.zeros((2, 4), np.float32),
                    scores=np.zeros((1,), np.float32),
                    classes=np.zeros((2,), np.int64))
+
+
+def test_predict_does_not_mutate_input_image(fake_ultra, weights_file):
+    img = _bgr(32, 48)
+    before = img.copy()
+    YOLODetector(weights_file).predict(img)
+    assert np.array_equal(img, before) and img.flags.writeable

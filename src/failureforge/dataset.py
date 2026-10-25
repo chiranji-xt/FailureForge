@@ -19,6 +19,7 @@ to treat them as zero-object images with a warning.
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator
@@ -352,6 +353,33 @@ class YoloDataset:
             "labels_dir": str(self.labels_dir),
         }
 
+    def partition(
+        self, holdout_fraction: float, seed: int = 0
+    ) -> "tuple[YoloDataset, YoloDataset]":
+        """Deterministically split into disjoint ``(discovery, holdout)`` datasets.
+
+        Used to keep search tuning and confirmation on different images. Both
+        parts must be non-empty, so at least two images are required.
+        """
+        if not 0.0 < holdout_fraction < 1.0:
+            raise DatasetError("holdout_fraction must be in (0, 1)")
+        if len(self.image_paths) < 2:
+            raise DatasetError("need at least 2 images to partition a dataset")
+        order = sorted(range(len(self.image_paths)))
+        random.Random(seed).shuffle(order)
+        n_hold = min(max(1, round(len(order) * holdout_fraction)), len(order) - 1)
+        hold = {i for i in order[:n_hold]}
+
+        def build(indices: list[int], tag: str) -> "YoloDataset":
+            return YoloDataset(
+                [self.image_paths[i] for i in indices], self.labels_dir,
+                self.class_names, split=f"{self.split}:{tag}", root=self.root,
+                allow_missing_labels=self.allow_missing_labels,
+            )
+
+        keep = [i for i in range(len(self.image_paths)) if i not in hold]
+        return build(keep, "discovery"), build(sorted(hold), "holdout")
+
     def class_name(self, class_id: int) -> str:
         if 0 <= class_id < len(self.class_names):
             return self.class_names[class_id]
@@ -366,8 +394,14 @@ class YoloDataset:
                 errors = [i for i in issues if i.severity == "error"]
                 if errors:
                     raise DatasetError("; ".join(str(e) for e in errors))
-            else:
+            elif self.allow_missing_labels:
                 boxes = []
+            else:
+                raise DatasetError(
+                    f"missing label file for {image_path.name}: {label_path} "
+                    "(an empty file is a valid zero-object label; pass "
+                    "allow_missing_labels=True to treat missing files as empty)"
+                )
             try:
                 with Image.open(image_path) as im:
                     width, height = im.size
