@@ -23,7 +23,7 @@ CLI says so.
 ## Search space
 
 `SearchSpace.default(include=None, exclude=("combined",), overrides=None)` is built
-from the perturbation registry's `ParamSpec`s (38 transforms by default). Numeric
+from the perturbation registry's `ParamSpec`s (37 transforms by default: `combined` and the legacy `blur` alias are excluded). Numeric
 parameters are sampled uniformly in range (ints uniformly; `motion_blur.kernel_size`
 on odd values because the engine rejects even kernels). Non-searchable parameters
 (choices, `search=False`) keep their registered defaults. `overrides` may narrow
@@ -36,6 +36,8 @@ it needs an ordered `steps` list.
 - TPE: `TPESampler(seed=seed)`, sequential ask/tell (no parallelism).
 - Per-trial perturbation seed = `derive_trial_seed(seed, index, name, params)`
   (SHA-256 based), so any trial can be replayed on its own.
+- `SearchResult.warnings` flags uninformative searches (baseline metric 0 or very low, no
+  degrading trial, no valid trial); they appear in JSON, Markdown and on stderr.
 - Wall-clock `duration_s` is recorded but is the only non-deterministic field.
 
 ## Trial states

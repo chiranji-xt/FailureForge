@@ -413,6 +413,10 @@ code. Full requirement table and defect list: `docs/implementation-audit.md`.
       (equal-budget random-vs-TPE over seeds), `write_failures_csv` +
       `perturb_failures.csv`/`confirmation_failures.csv`, ruff config with all
       pyflakes findings fixed, `.gitattributes`, CI lint step. Suite: **608 passed**.
+- [x] Improvement pass (2026-10-26, see `PROJECT_IMPROVEMENT_REPORT.md`): metrics
+      validated against an independent reference (no bug); bit-identical speedups
+      for rain/glare/lens_flare/motion_blur (search -13% on a synthetic benchmark);
+      `blur` alias removed from the default space; search warnings. Suite: **668 passed**.
 - [x] Day 15 verification: full suite, wheel build (all subpackages present),
       docs reconciled, CI updated (matrix + wheel build).
 - [x] Tests: new `test_search.py` (22), `test_cli.py` (24), 3 dataset tests,
