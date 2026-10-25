@@ -30,10 +30,11 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `search/random_search.py` | Seeded Random Search |
 | `search/tpe_search.py` | Optional Optuna TPE (ask/tell; invalid trials told as FAIL) |
 | `search/confirm.py` | Held-out, multi-seed confirmation of top distinct candidates |
+| `search/compare.py` | Equal-budget multi-seed comparison of search methods (descriptive statistics) |
 | `search/report.py` | Search JSON / Markdown / CSV (formula-injection safe) |
 | `reporting.py` | Schema-versioned JSON (NumPy/non-finite/path-safe) + dependency-free Markdown with ranking, groups, ladders, warnings |
 | `gallery.py` | Offline HTML failure gallery: escaped entries, optional hashed image copies/box overlays, no-claim fallbacks |
-| `cli.py` | `list-perturbations`, `validate-data`, `evaluate`, `perturb`, `search` |
+| `cli.py` | `list-perturbations`, `validate-data`, `evaluate`, `perturb`, `search`, `compare` |
 
 `perturbations/` submodules group the 12 families: `photometric.py` (noise,
 exposure, colour), `blur.py`, `weather.py`, `occlusion.py`, `geometry.py`,
@@ -52,8 +53,7 @@ core/registry in `base.py` and box maths in `boxops.py`. See
   `annotations.py` (read-only annotation validation), and `objective.py`
   (deterministic signed metric degradation), the `search/` package (Random Search,
   optional TPE, confirmation, search reports + CSV), `cli.py`, and `demo.py`.
-  Deferred items (automated random-vs-TPE comparison harness, CSV failure
-  export, multi-objective scores) are listed in `implementation-audit.md`.
+  Deferred items (report regeneration from saved JSON, multi-objective scores) are listed in `implementation-audit.md`.
 
 The evaluation adapter does not reimplement evaluation: it builds a stream of
 `(transformed_sample, bgr)` pairs and passes it to the evaluator's shared

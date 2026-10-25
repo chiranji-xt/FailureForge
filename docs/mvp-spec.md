@@ -139,8 +139,8 @@ rewarded for invalid annotations or bugs.
   distinct configurations are re-evaluated there over several fresh seeds, with
   mean/std/min/max and an "all seeds degrade" flag.
 - Trial counts, per-trial timing, and invalid/errored trials are recorded.
-- Running both methods with equal budget/seed/space for a comparison is manual
-  (two CLI runs); no automated comparison report exists yet.
+- `failureforge compare` runs both methods with equal budget/space over several
+  seeds and reports descriptive statistics (no significance test).
 
 ## Outputs
 
@@ -151,8 +151,8 @@ rewarded for invalid annotations or bugs.
 
 Implemented so far: schema-versioned JSON and Markdown for Benchmark/Quick runs
 (`failureforge.reporting`), search JSON/Markdown/CSV (`failureforge.search`),
-and an offline HTML gallery (`failureforge.gallery`). CSV export of per-image
-failure records is not implemented (deferred).
+and an offline HTML gallery (`failureforge.gallery`). Verified failure records
+export to CSV (`perturb_failures.csv`).
 
 ## Acceptance criteria (MVP)
 

@@ -169,3 +169,36 @@ def test_shipped_default_config_is_valid():
 
     cfg = load_config(Path(__file__).resolve().parents[1] / "configs" / "default.yaml")
     assert cfg["search"]["metric"] == "f1"
+
+
+def test_perturb_writes_failure_csv(data, tmp_path):
+    import csv
+
+    out = tmp_path / "f"
+    assert run(["perturb", "--data", data, "--transform", "darken", "--param", "factor=0.0",
+                "--out-dir", str(out)]) == 0
+    rows = list(csv.DictReader((out / "perturb_failures.csv").open(encoding="utf-8")))
+    assert rows and {r["category"] for r in rows} <= {
+        "false_negative", "false_positive", "class_confusion", "localization_error",
+        "duplicate_detection", "unmatched"}
+    assert {r["trial"] for r in rows} <= {"baseline", "0"}
+    assert all(r["transform"] in ("", "darken") for r in rows)
+
+
+def test_failure_csv_rejects_quick_runs_and_is_formula_safe():
+    from failureforge.reporting import csv_safe, write_failures_csv
+
+    assert csv_safe("=1+1") == "'=1+1" and csv_safe(None) == "" and csv_safe("ok") == "ok"
+    with pytest.raises(ValueError, match="benchmark"):
+        write_failures_csv(object(), "x.csv")
+
+
+def test_compare_command(data, tmp_path, capsys):
+    out = tmp_path / "cmp"
+    assert run(["compare", "--data", data, "--methods", "random", "--runs", "2",
+                "--budget", "3", "--transforms", "darken", "--out-dir", str(out)]) == 0
+    payload = json.loads((out / "compare.json").read_text())
+    assert payload["methods"][0]["method"] == "random" and len(payload["methods"][0]["seeds"]) == 2
+    assert "random: mean best f1" in capsys.readouterr().out
+    assert run(["compare", "--data", data, "--methods", "bogus"]) == 2
+    assert run(["compare", "--data", data, "--runs", "0"]) == 2

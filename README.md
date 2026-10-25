@@ -15,8 +15,7 @@ confirmation, search reports (JSON/Markdown/CSV), and a CLI**.
 
 Not verified here: a real YOLO model (no `ultralytics`/weights in the test
 environment; the detector wrapper is tested with a mocked model) and Python
-versions other than 3.14. Deferred: an automated random-vs-TPE comparison
-report, per-image failure CSV. See `docs/implementation-audit.md` for the full
+versions other than 3.14. Deferred: regenerating reports from saved JSON. See `docs/implementation-audit.md` for the full
 requirement table and `docs/progress.md` for the day-by-day log.
 
 ## Quick start
@@ -45,10 +44,11 @@ failureforge perturb  --data data.yaml --weights best.pt --transform gaussian_bl
 failureforge perturb  --data data.yaml --weights best.pt --transform darken --param factor=0.2 --mode quick
 failureforge search   --data data.yaml --weights best.pt --method random --budget 30 --metric f1 --gallery
 failureforge search   --config configs\default.yaml --method tpe        # needs the optuna extra
+failureforge compare  --data data.yaml --weights best.pt --runs 5 --budget 30   # random vs TPE, equal budget
 ```
 
 Outputs go to `--out-dir` (default `results/`): `baseline.json`; `perturb.json|md`;
-`search.json|md`, `search_trials.csv`; `confirmation.json|md`; `failure_gallery.html`
+`search.json|md`, `search_trials.csv`; `confirmation.json|md`; `perturb_failures.csv` / `confirmation_failures.csv` (one row per verified failure); `compare.json|md`; `failure_gallery.html`
 (+ `images/`, `perturbed_images/`). Flags override `--config` values, which
 override defaults. `validate-data` exits 1 when the dataset is invalid; usage or
 input errors exit 2 with an `error:` message.
@@ -242,7 +242,7 @@ weights, downloads, or network). Current status: see `docs/progress.md`.
 - Evaluates a given detector; does not enumerate all real-world failures.
 - Single-seed comparisons are noisy — run multiple seeds.
 - No fabricated benchmarks are included; run the pipeline to get real numbers.
-- Search uses one metric at a time, uniform sampling, and sequential trials; a
-  random-vs-TPE comparison must be run manually.
+- Search uses one metric at a time, uniform sampling, and sequential trials.
+  `compare` is descriptive (mean/std/min/max over seeds), not a significance test.
 - `perturb --mode quick` still needs the standard `labels/` directory to load the
   dataset, but never reads label files.

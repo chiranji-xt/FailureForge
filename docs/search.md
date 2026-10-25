@@ -65,6 +65,15 @@ needs ≥ 2 valid seeds), `min`, `max`, `n_valid`/`n_invalid`, and
 invented. `ConfirmationResult.results` holds in-memory `PerturbedResult`s used by
 the CLI to build a `BenchmarkRun` (`confirmation.json/md`) and gallery.
 
+## Comparing methods
+
+`failureforge compare --data data.yaml --weights best.pt --methods random,tpe --runs 5 --budget 30`
+(or `compare_methods(...)`) runs each method for `runs` consecutive seeds with one
+shared baseline, space, objective and budget, then writes `compare.json|md`: best
+score mean/std/min/max per method, per-seed bests, and best-so-far curves. It
+compares optimizers on the given split (no holdout); it does not report
+held-out robustness. Seeds with no valid trial are excluded and shown as n/a.
+
 ## Python example
 
 ```python
@@ -92,8 +101,7 @@ write_search_report(result, "results", confirmation)
   (multi-step) perturbations in the default space.
 - Small holdouts give noisy confirmation; `std` needs ≥ 2 seeds and is not a
   confidence interval.
-- Random-vs-TPE comparison is manual (run both with equal budget/seed/space);
-  there is no automated comparison report or significance test.
+- `compare` reports descriptive statistics only; no significance test.
 - TPE is sequential; trials are not parallelised.
 - Detector inference is repeated for every trial and image; cost scales with
   `budget × images`.

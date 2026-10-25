@@ -23,14 +23,16 @@ from .gallery import write_gallery
 from .objective import SUPPORTED_METRICS, ObjectiveConfig
 from .perturbations import PerturbationError, available, get
 from .perturbations.base import bgr_to_pil
-from .reporting import json_safe, write_report
+from .reporting import json_safe, write_failures_csv, write_report
 from .search import (
     OptionalDependencyError,
     SearchSpace,
     SearchSpaceError,
+    compare_methods,
     confirm_trials,
     run_random_search,
     run_tpe_search,
+    write_comparison,
     write_search_report,
 )
 
@@ -202,6 +204,8 @@ def cmd_perturb(args: argparse.Namespace, factory: DetectorFactory) -> int:
               f"delta f1={d['f1']:+.4f} recall={d['recall']:+.4f} "
               f"precision={d['precision']:+.4f} map50={d['map50']:+.4f}")
     paths = write_report(run, out, basename="perturb")
+    if args.mode == "benchmark":
+        paths["csv"] = write_failures_csv(run, out / "perturb_failures.csv")
     for path in paths.values():
         print(f"saved {path}")
     if args.gallery:
@@ -270,7 +274,9 @@ def cmd_search(args: argparse.Namespace, factory: DetectorFactory) -> int:
         print(f"saved {path}")
     if confirmation is not None and confirmation.results:
         run = build_benchmark_run(confirmation.baseline, confirmation.results)
-        for path in write_report(run, out, basename="confirmation").values():
+        conf_paths = write_report(run, out, basename="confirmation")
+        conf_paths["csv"] = write_failures_csv(run, out / "confirmation_failures.csv")
+        for path in conf_paths.values():
             print(f"saved {path}")
         if args.gallery:
             clean = {p.name: p for p in held.image_paths}
@@ -279,6 +285,36 @@ def cmd_search(args: argparse.Namespace, factory: DetectorFactory) -> int:
             print("note: gallery images are shown for the first confirmed candidate only")
             print(f"saved {write_gallery(run, out, clean_images=clean, perturbed_images=pert, overwrite=True)}")
     return EXIT_OK if best is not None else EXIT_INVALID
+
+
+def cmd_compare(args: argparse.Namespace, factory: DetectorFactory) -> int:
+    s, cfg = _settings(args)
+    g = lambda cli, key, default: pick(cli, cfg, "search", key, default)  # noqa: E731
+    metric = g(args.metric, "metric", "f1")
+    if metric not in SUPPORTED_METRICS:
+        raise CliError(f"metric must be one of {SUPPORTED_METRICS}, got {metric!r}")
+    n_seeds = int(args.runs)
+    if n_seeds < 1:
+        raise CliError("--runs must be >= 1")
+    base_seed = int(g(args.seed, "seed", 0))
+    names = g(args.transforms, "transforms", None)
+    if isinstance(names, str):
+        names = [n.strip() for n in names.split(",") if n.strip()]
+    methods = [m.strip() for m in args.methods.split(",") if m.strip()]
+    result = compare_methods(
+        factory(s), _load_dataset(s), methods=methods,
+        seeds=range(base_seed, base_seed + n_seeds),
+        budget=int(g(args.budget, "budget", 20)),
+        space=SearchSpace.default(include=names),
+        objective=ObjectiveConfig(metric=metric), iou_threshold=s["iou"],
+    )
+    for m in result.methods:
+        st = m.stats
+        mean = "n/a" if st["mean"] is None else f"{st['mean']:.4f}"
+        print(f"{m.method}: mean best {metric} degradation={mean} over {st['n']}/{len(m.seeds)} runs")
+    for path in write_comparison(result, s["out"]).values():
+        print(f"saved {path}")
+    return EXIT_OK
 
 
 # ---------------------------------------------------------------------------
@@ -345,6 +381,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--confirm-seed", type=int)
     s.add_argument("--gallery", action="store_true", help="also write an HTML gallery")
     s.set_defaults(func=cmd_search)
+
+    c = sub.add_parser("compare", help="equal-budget comparison of search methods over several seeds")
+    _common(c)
+    c.add_argument("--methods", default="random,tpe", help="comma-separated: random,tpe")
+    c.add_argument("--runs", type=int, default=3, help="seeds per method (default 3)")
+    c.add_argument("--budget", type=int, help="trials per run (default 20)")
+    c.add_argument("--seed", type=int, help="first seed (default 0)")
+    c.add_argument("--metric", choices=list(SUPPORTED_METRICS), help="default f1")
+    c.add_argument("--transforms", help="comma-separated subset")
+    c.set_defaults(func=cmd_compare)
     return p
 
 

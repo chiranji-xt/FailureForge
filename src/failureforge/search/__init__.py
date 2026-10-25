@@ -1,4 +1,10 @@
 """Robustness search: Random Search, optional Optuna TPE, and confirmation."""
+from .compare import (
+    ComparisonResult,
+    compare_methods,
+    render_comparison_markdown,
+    write_comparison,
+)
 from .confirm import ConfirmationRecord, ConfirmationResult, confirm_trials
 from .random_search import run_random_search
 from .report import (
@@ -13,6 +19,8 @@ from .tpe_search import OptionalDependencyError, optuna_available, run_tpe_searc
 from .trials import SearchResult, SearchTrial, config_key, rank_trials
 
 __all__ = [
+    "ComparisonResult", "compare_methods", "render_comparison_markdown",
+    "write_comparison",
     "ConfirmationRecord", "ConfirmationResult", "confirm_trials",
     "run_random_search", "run_tpe_search", "optuna_available",
     "OptionalDependencyError", "TrialRunner", "ParamRange", "SearchSpace",

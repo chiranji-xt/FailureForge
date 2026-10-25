@@ -55,14 +55,14 @@ in `progress.md`).
 | R16 | Held-out multi-seed confirmation (Day 11) | `search/confirm.py`, `YoloDataset.partition` | `test_search.py`, `test_dataset.py`, CLI e2e | C | No pass/fail threshold invented. |
 | R17 | Failure categorization of search winners + deduplication (Day 12) | `search/trials.py` (`unique`), CLI `confirmation.*` | `test_search.py`, `test_cli.py` | C | Dedup is of near-identical *configurations* (4-decimal rounding); failure records are categorized by the Day-6 analysis of confirmed candidates. |
 | R18 | Search reports: JSON, Markdown, CSV | `search/report.py` | `test_search.py` | C | CSV is formula-injection safe. |
-| R19 | CSV export of per-image failure records | — | — | D | Not required by acceptance criteria beyond trial CSV; JSON carries the full records. |
+| R19 | CSV export of verified failure records | `reporting.write_failures_csv` | `test_cli.py` | C | Added after the first audit; benchmark runs only (Quick instability is never exported as failures). |
 | R20 | CLI: install/configure/baseline/perturb/inspect/search/report/gallery | `cli.py`, `config.py` | `test_cli.py` (24) incl. synthetic end-to-end | C | Real-YOLO path is covered only by the factory seam (R03). Stale `report` subcommand removed (reports are written by `perturb`/`search`). |
 | R21 | Regenerating reports from saved JSON | — | — | D | No consumer needs it; reports are produced at run time. Removed from docs rather than shipped half-working. |
-| R22 | Automated random-vs-TPE comparison report | — | — | D | Original research question; run both methods with the same seed/budget/space and compare `search.json` files. A comparison harness needs multi-seed statistics beyond the MVP. |
+| R22 | Random-vs-TPE comparison report | `search/compare.py`, CLI `compare` | `test_search.py`, `test_cli.py` | C | Added after the first audit; descriptive statistics only, no significance test. |
 | R23 | Weight-free demo | `demo.py`, `examples/make_demo_data.py` | `test_cli.py`, `test_search.py` | C | `ColorBlobDetector` is a rule-based stand-in, not a model. |
 | R24 | Docs agree with implementation | README, `docs/*` | manual review in this audit | C | |
 | R25 | Python ≥ 3.9 support (`requires-python`) | all | — | B | Only Python 3.14 is installed locally; CI matrix (3.9/3.11/3.12) added but unrun. |
-| R26 | Lint/type-check configuration | — | `ruff` run ad hoc only | D | Project has no lint/type config. Pre-existing minor findings (unused imports/variables) were not changed to keep the diff focused. |
+| R26 | Lint configuration | `pyproject.toml` (`[tool.ruff.lint]` F, E9) | `ruff check src tests` passes; run in CI | C | Pyflakes/syntax rules only; no type checker or formatter configured. Style rules deliberately not enabled. |
 
 ## Final verification
 

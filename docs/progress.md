@@ -409,6 +409,10 @@ code. Full requirement table and defect list: `docs/implementation-audit.md`.
 - [x] Day 14 `failureforge.demo` (`make_demo_dataset`, rule-based
       `ColorBlobDetector`), `examples/make_demo_data.py`, README quick start
       verified end to end.
+- [x] Follow-up improvements (same day): `compare` command / `compare_methods`
+      (equal-budget random-vs-TPE over seeds), `write_failures_csv` +
+      `perturb_failures.csv`/`confirmation_failures.csv`, ruff config with all
+      pyflakes findings fixed, `.gitattributes`, CI lint step. Suite: **608 passed**.
 - [x] Day 15 verification: full suite, wheel build (all subpackages present),
       docs reconciled, CI updated (matrix + wheel build).
 - [x] Tests: new `test_search.py` (22), `test_cli.py` (24), 3 dataset tests,
@@ -422,8 +426,7 @@ Known issues / notes:
   `YOLODetector` unit tests with a mocked model.
 - Only Python 3.14 was available locally; the 3.9/3.11/3.12 CI matrix is
   unrun. Optuna was tested at 5.0.0 only.
-- Deferred: automated random-vs-TPE comparison report, per-image failure CSV,
-  regenerating reports from saved JSON (see audit R19, R21, R22).
+- Deferred: regenerating reports from saved JSON (audit R21).
 - No benchmark results are claimed; demo numbers come from a rule-based detector.
 
 ## 15-day roadmap (planned milestones, not completed features)
@@ -447,6 +450,5 @@ Known issues / notes:
 
 ## Next recommended task
 
-Deferred items (see `docs/implementation-audit.md`): an automated random-vs-TPE
-comparison harness over several seeds, per-image failure CSV, and a real-YOLO
-smoke test once local weights and `ultralytics` are available.
+Deferred items (see `docs/implementation-audit.md`): report regeneration from saved
+JSON and a real-YOLO smoke test once local weights and `ultralytics` are available.

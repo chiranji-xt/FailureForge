@@ -259,3 +259,40 @@ def test_report_no_valid_trials(det, ds):
     r = run_random_search(det, ds, budget=1, seed=0)
     r.trials[0].status, r.trials[0].score = STATUS_INVALID, None
     assert "nothing is ranked" in render_search_markdown(r)
+
+
+# ----------------------------------------------------------------- comparison
+
+def test_compare_methods_random_only_deterministic(det, ds):
+    from failureforge.search import compare_methods, render_comparison_markdown
+
+    kw = dict(methods=["random"], seeds=[0, 1, 2], budget=4,
+              space=SearchSpace.default(include=["darken", "gaussian_noise"]))
+    a, b = compare_methods(det, ds, **kw), compare_methods(det, ds, **kw)
+    assert a.to_dict() == b.to_dict()
+    (m,) = a.methods
+    assert m.stats["n"] == 3 and len(m.curves) == 3 and len(m.curves[0]) == 4
+    for curve in m.curves:  # running best never decreases
+        vals = [v for v in curve if v is not None]
+        assert vals == sorted(vals)
+    json.dumps(a.to_dict(), allow_nan=False)
+    assert "Descriptive only" in render_comparison_markdown(a)
+
+
+@pytest.mark.skipif(not optuna_available(), reason="optuna not installed (optional extra)")
+def test_compare_random_vs_tpe_equal_budget(det, ds):
+    from failureforge.search import compare_methods
+
+    r = compare_methods(det, ds, seeds=[0, 1], budget=4,
+                        space=SearchSpace.default(include=["darken", "gaussian_blur"]))
+    assert [m.method for m in r.methods] == ["random", "tpe"]
+    assert all(len(c) == 4 for m in r.methods for c in m.curves)
+
+
+@pytest.mark.parametrize("kw", [{"methods": []}, {"methods": ["nope"]},
+                                {"seeds": []}, {"budget": 0}])
+def test_compare_validation(det, ds, kw):
+    from failureforge.search import compare_methods
+
+    with pytest.raises(ValueError):
+        compare_methods(det, ds, **kw)
