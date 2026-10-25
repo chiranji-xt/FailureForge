@@ -163,7 +163,8 @@ per-image counts instead.
   overlapping extras are reported as class confusion or unmatched.
 - Localization of matched predictions is a diagnostic aspect of a TP.
 - Severity ladders are parameter ladders, not invented severity labels.
-- No CLI command is exposed yet (Day 13); use the Python functions above.
+- `failureforge perturb` writes these reports from the CLI; the Python functions
+  above remain the programmatic API.
 
 ## Gallery and annotation checks
 

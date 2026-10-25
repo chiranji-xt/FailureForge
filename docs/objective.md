@@ -90,13 +90,12 @@ It is deliberately separate from:
 No failure count, instability count, or arbitrary weight is folded into the
 score.
 
-## Future search consumption
+## Search consumption
 
-Days 9-10 search algorithms will evaluate a candidate perturbation, call
-`evaluate_objective` with the shared baseline and the trial's perturbed report,
-and maximize `degradation` only when `valid` is true. Invalid trials must be
-recorded as invalid, not ranked. Search-space sampling, budgets, random search,
-and Optuna/TPE are **not implemented in Day 8**.
+`failureforge.search.TrialRunner` calls `evaluate_objective` with the shared
+baseline and each trial's perturbed report. Only `valid` trials are ranked or
+reported to Optuna; invalid trials are recorded as `invalid` and Optuna sees
+them as FAILED. See `docs/search.md`.
 
 ## Limitations
 

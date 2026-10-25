@@ -380,6 +380,52 @@ Known issues / notes:
   integration remain unimplemented.
 - No benchmark results are claimed.
 
+## Days 9–15 — Search, confirmation, CLI, demo, release audit (2026-10-25): DONE
+
+Objective: finish the remaining roadmap after verifying Days 1–8 against the
+code. Full requirement table and defect list: `docs/implementation-audit.md`.
+
+- [x] Audit: HEAD `d53efb6`, suite **553 passed** before changes. The untracked
+      `cli.py`, `config.py`, `search/` previews were stale (pre-Day-3 API,
+      `-inf` for failed trials) and were rewritten.
+- [x] Defect D1 fixed: `YoloDataset.iter_samples` silently treated missing label
+      files as empty (inflating false positives); it now raises unless
+      `allow_missing_labels=True`. Added `YoloDataset.partition` (deterministic
+      disjoint discovery/holdout split).
+- [x] Day 9 `search/` package: `SearchSpace` (from registry `ParamSpec`s, odd
+      `motion_blur` kernels, narrowing-only overrides), `TrialRunner` (shared
+      baseline, `evaluate_perturbed` + `evaluate_objective`), seeded
+      `run_random_search`, trial states `ok/invalid/error` (never ranked, never
+      zero), ranking with `unique=True` dedup.
+- [x] Day 10 optional `run_tpe_search` (Optuna ask/tell, invalid → FAIL,
+      `OptionalDependencyError` when absent).
+- [x] Day 11 `confirm_trials`: top-k distinct configs re-scored on the holdout
+      with fresh seeds (mean/std/min/max, `degrades_in_all_seeds`).
+- [x] Day 12 search JSON/Markdown/CSV (`write_search_report`; CSV formula-safe);
+      confirmed candidates flow through Day-6 analysis into `confirmation.*`.
+- [x] Day 13 CLI (`list-perturbations`, `validate-data`, `evaluate`, `perturb`,
+      `search`) + strict YAML config (`configs/default.yaml`); injectable
+      detector factory for tests.
+- [x] Day 14 `failureforge.demo` (`make_demo_dataset`, rule-based
+      `ColorBlobDetector`), `examples/make_demo_data.py`, README quick start
+      verified end to end.
+- [x] Day 15 verification: full suite, wheel build (all subpackages present),
+      docs reconciled, CI updated (matrix + wheel build).
+- [x] Tests: new `test_search.py` (22), `test_cli.py` (24), 3 dataset tests,
+      1 detector test; `test_metrics.py` now tracked. Final suite: **599 passed**
+      (`python -m pytest -q`, Python 3.14.3, ~6 s, CPU-only).
+
+Known issues / notes:
+
+- No real-YOLO smoke test: `ultralytics` and weights are unavailable here
+  (never downloaded). The CLI's real-detector path is exercised only through
+  `YOLODetector` unit tests with a mocked model.
+- Only Python 3.14 was available locally; the 3.9/3.11/3.12 CI matrix is
+  unrun. Optuna was tested at 5.0.0 only.
+- Deferred: automated random-vs-TPE comparison report, per-image failure CSV,
+  regenerating reports from saved JSON (see audit R19, R21, R22).
+- No benchmark results are claimed; demo numbers come from a rule-based detector.
+
 ## 15-day roadmap (planned milestones, not completed features)
 
 - Day 1: Project foundation, scope, research plan, GitHub setup. ✅
@@ -391,26 +437,16 @@ Known issues / notes:
   schema-versioned JSON/Markdown reporting. ✅
 - Day 7: Failure gallery + annotation-correctness checks. ✅
 - Day 8: Deterministic search objective over existing evaluation metrics. ✅
-- Day 9: Random search.
-- Day 10: Optuna TPE search.
-- Day 11: Multi-seed comparison and confirmation evaluation.
-- Day 12: Failure categorization, deduplication, reports.
-- Day 13: CLI and integration.
-- Day 14: Documentation and reproducible demo.
-- Day 15: Fresh-environment verification and release.
+- Day 9: Random search. ✅
+- Day 10: Optuna TPE search (optional dependency). ✅
+- Day 11: Multi-seed confirmation on a held-out split. ✅
+- Day 12: Search reports (JSON/Markdown/CSV), deduplication, confirmed-failure reports. ✅
+- Day 13: CLI and integration. ✅
+- Day 14: Documentation and reproducible demo. ✅
+- Day 15: Verification and release audit. ✅ (see `implementation-audit.md` for deferred items)
 
 ## Next recommended task
 
-Implement seeded Random Search over the shared perturbation search space
-(Day 9), consuming the Day-8 objective:
-
-1. Define one search-space representation from existing perturbation parameter
-   specifications/ranges and deterministic per-trial seed derivation.
-2. Evaluate candidates through the existing Benchmark adapter, build the
-   objective with one shared baseline, and record every trial (configuration,
-   seed, score, validity/warnings, timing, and failures).
-3. Rank only valid objectives; record invalid trials explicitly and never treat
-   them as zero degradation.
-4. Add CPU-only mock/synthetic tests for budget, determinism, sampling bounds,
-   invalid-trial handling, and best-trial selection. Do not implement TPE yet;
-   keep CSV export and CLI integration for their scheduled days.
+Deferred items (see `docs/implementation-audit.md`): an automated random-vs-TPE
+comparison harness over several seeds, per-image failure CSV, and a real-YOLO
+smoke test once local weights and `ultralytics` are available.

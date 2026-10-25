@@ -97,4 +97,6 @@ are not false positives/negatives and carry no precision/recall/F1/mAP claims.
   many source images; only referenced images are copied.
 - Supplied images are trusted to match the record's coordinate space; dimension
   mismatches are only heuristically detectable.
-- No CSV export or gallery CLI command yet (CLI remains Day 13).
+- The CLI writes a gallery via `perturb --gallery` / `search --gallery` (for
+  `search`, only the first confirmed candidate's images are attached). No CSV
+  export of failure records.

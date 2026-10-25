@@ -1,11 +1,11 @@
-# FailureForge — architecture (implemented Days 1–8; Days 9–15 planned)
+# FailureForge — architecture (Days 1–15 implemented; see implementation-audit.md)
 
 ## Implemented data flow
 
 ```text
 Labeled dataset → baseline evaluation → image perturbations →
 annotation updates → detector predictions → prediction matching & metrics →
-failure records → random search vs TPE → independent confirmation evaluation →
+failure records → random search / optional TPE → held-out multi-seed confirmation →
 reports (JSON/CSV/Markdown) + failure gallery
 ```
 
@@ -13,7 +13,8 @@ reports (JSON/CSV/Markdown) + failure gallery
 
 | Module | Responsibility |
 |---|---|
-| `config.py` | YAML configuration loading with defaults |
+| `config.py` | Strict YAML run-config loading (unknown keys rejected); CLI flags override the file |
+| `demo.py` | Synthetic demo dataset + deterministic `ColorBlobDetector` (not YOLO) for weight-free end-to-end runs and tests |
 | `dataset.py` | Strict YOLO dataset loading/validation; never silently drops rows |
 | `detector.py` | Detector interface + Ultralytics adapter; model loaded once; CPU-capable |
 | `perturbations/` | Seeded perturbation engine: 12 families over BGR `uint8` arrays with pixel-space box remapping |
@@ -23,12 +24,16 @@ reports (JSON/CSV/Markdown) + failure gallery
 | `evaluator.py` | Baseline evaluation over a `(sample, bgr)` stream; unchanged public `evaluate_baseline` |
 | `evaluation.py` | Perturbation→evaluation adapter: Benchmark Mode (deltas vs transformed GT), label-free Quick Mode (instability), severity sweeps |
 | `failures.py` | Verified failure categories + Quick instability records + schema-versioned benchmark/quick runs |
-| `objective.py` | Deterministic signed metric degradation (`baseline - perturbed`) for future search; validates selected metric, finite values, and report compatibility |
-| `search/random_search.py` | Seeded uniform sampling over the shared search space |
-| `search/tpe_search.py` | Optuna TPESampler over the same space/objective |
+| `objective.py` | Deterministic signed metric degradation (`baseline - perturbed`); validates selected metric, finite values, and report compatibility |
+| `search/space.py` | `SearchSpace` derived from perturbation `ParamSpec`s (uniform, odd-kernel aware) |
+| `search/runner.py` | `TrialRunner`: one shared baseline, `evaluate_perturbed` + `evaluate_objective` per candidate, errors recorded not scored |
+| `search/random_search.py` | Seeded Random Search |
+| `search/tpe_search.py` | Optional Optuna TPE (ask/tell; invalid trials told as FAIL) |
+| `search/confirm.py` | Held-out, multi-seed confirmation of top distinct candidates |
+| `search/report.py` | Search JSON / Markdown / CSV (formula-injection safe) |
 | `reporting.py` | Schema-versioned JSON (NumPy/non-finite/path-safe) + dependency-free Markdown with ranking, groups, ladders, warnings |
 | `gallery.py` | Offline HTML failure gallery: escaped entries, optional hashed image copies/box overlays, no-claim fallbacks |
-| `cli.py` | `validate-data`, `evaluate`, `search`, `report` commands |
+| `cli.py` | `list-perturbations`, `validate-data`, `evaluate`, `perturb`, `search` |
 
 `perturbations/` submodules group the 12 families: `photometric.py` (noise,
 exposure, colour), `blur.py`, `weather.py`, `occlusion.py`, `geometry.py`,
@@ -38,17 +43,17 @@ core/registry in `base.py` and box maths in `boxops.py`. See
 
 ## Implemented vs planned
 
-- **Implemented (Days 1–8):** project foundation, `detector.py` (inference-only
+- **Implemented (Days 1–15):** project foundation, `detector.py` (inference-only
   `YOLODetector`), `dataset.py`/`metrics.py`/`evaluator.py` (baseline
   evaluation), the `perturbations/` engine (12 families) with a `transforms.py`
   compatibility shim, `evaluation.py` (Benchmark/Quick Mode + severity sweeps),
   `failures.py`/`reporting.py` (verified failure analysis, instability records,
   JSON/Markdown reports), `gallery.py` (offline HTML failure gallery),
   `annotations.py` (read-only annotation validation), and `objective.py`
-  (deterministic signed metric degradation for future search).
-- **Planned (Days 9–15):** search algorithms, independent confirmation,
-  remaining exports, and CLI integration, implemented and verified one stage at
-  a time per `progress.md`.
+  (deterministic signed metric degradation), the `search/` package (Random Search,
+  optional TPE, confirmation, search reports + CSV), `cli.py`, and `demo.py`.
+  Deferred items (automated random-vs-TPE comparison harness, CSV failure
+  export, multi-objective scores) are listed in `implementation-audit.md`.
 
 The evaluation adapter does not reimplement evaluation: it builds a stream of
 `(transformed_sample, bgr)` pairs and passes it to the evaluator's shared
@@ -75,6 +80,12 @@ to `failures.compare_reports`. It is not a failure counter or Quick Mode
 instability score: it reports signed degradation for one selected metric and
 marks missing, non-finite, or incompatible comparisons invalid. See
 `docs/objective.md`.
+
+Search never duplicates evaluation: every candidate goes through
+`evaluate_perturbed` (shared baseline) and `evaluate_objective`. Tuning uses a
+discovery partition (`YoloDataset.partition`); confirmation re-scores the best
+*distinct* configurations on the disjoint holdout with fresh seeds. See
+`docs/search.md`.
 
 ## Dependency boundaries
 

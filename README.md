@@ -1,63 +1,81 @@
 # FailureForge
 
 Reproducible robustness testing for YOLO object detectors. Evaluates a detector
-under controlled perturbations and compares **random search vs Optuna TPE** at
-finding the most damaging configurations — decided by experiment, not assumption.
+under controlled perturbations and searches (Random Search, optional Optuna TPE)
+for the most damaging configurations, confirming them on held-out images.
 
-## Development status (Day 8)
+## Status
 
-- ✅ Day 1: project foundation (packaging, docs, smoke test).
-- ✅ Day 2: **YOLO detector wrapper** (`YOLODetector`, inference only) —
-  implemented, tested (20 mocked tests, no weights/network required), verified.
-- ✅ Day 3: **Dataset loading, validation & baseline evaluation** — `YoloDataset`
-  with real `data.yaml`/split-directory support, name-based class mapping, strict
-  validation (malformed rows, bad coords, missing/orphan/corrupt files, class
-  mismatch) and pixel-coordinate conversion; `evaluate_baseline` reports
-  IoU≥0.50 matching, TP/FP/FN, micro P/R/F1, per-class AP and mAP50 plus
-  wrong-class / poor-localization diagnostics.
-- ✅ Day 4: **Robustness perturbation engine** — `failureforge.perturbations`
-  implements **12 families / 39 transforms** over BGR `uint8` images (noise,
-  exposure, blur, weather, colour, occlusion, geometric, quality, shadows,
-  lens, cropping, `combined`), seeded and reproducible, with correct
-  pixel-space ground-truth remapping for geometric/cropping ops. `transforms.py`
-  is retained as a compatibility shim. Fully tested at Day 4 — **455 tests
-  passed** across
-  all modules, no weights/network required. See `docs/perturbations.md`.
-- ✅ Day 5: **Perturbation→evaluation adapter** — `failureforge.evaluation`
-  adds **Benchmark Mode** (metric deltas vs transformed GT, baseline computed
-  once), **Quick Mode** (label-free prediction instability: disappeared,
-  appeared, class/confidence changes, box drift — never accuracy metrics), and
-  deterministic **severity sweeps** with attributable per-trial errors.
-  `evaluator.py` was refactored behind an unchanged `evaluate_baseline`.
-  Full suite: **474 tests pass**, CPU-only, no weights/network.
-- ✅ Day 6: **Failure analysis & reporting** — `failureforge.failures` derives
-  six verified categories (`false_negative`, `false_positive`, `class_confusion`,
-  `localization_error`, `duplicate_detection`, `unmatched`) from evaluator
-  details without changing metrics, keeps Quick Mode separate as
-  prediction-instability records, and builds schema-versioned benchmark/quick
-  runs. `failureforge.reporting` writes NumPy/non-finite/path-safe JSON and a
-  dependency-free Markdown report with metric comparisons, family/operation
-  groups, severity ladders, rankings, and warnings. Full suite: **511 tests
-  pass**, CPU-only, no weights/network. See `docs/failure-analysis.md`.
-- ✅ Day 7: **Failure gallery & annotation validation** — `failureforge.gallery`
-  renders a portable, dependency-free HTML gallery from Benchmark/Quick run
-  records with escaped content, deterministic ordering, optional relative image
-  artifacts and correct GT/prediction box overlays; entries without images fall
-  back to clearly labelled box diagrams. `failureforge.annotations` validates
-  labels read-only with errors/warnings and file:line context, including
-  missing-vs-empty files, non-finite/out-of-range geometry, class IDs, invalid
-  sizes, canvas mismatches, and overlap warnings. Full suite: **534 tests pass**,
-  CPU-only, no weights/network. See `docs/gallery.md` and `docs/annotations.md`.
-- ✅ Day 8: **Deterministic search objective** — `failureforge.objective` compares
-  compatible evaluation reports for one existing metric (`precision`, `recall`,
-  `f1`, or `map50`). Signed degradation is `baseline − perturbed`, so larger is
-  worse and improvements are negative. Missing/non-finite values and
-  incompatible reports return invalid results with no score, never zero. Full
-  suite: **553 tests pass**, CPU-only, no weights/network. See
-  `docs/objective.md`. Random Search and Optuna/TPE are not yet implemented.
-- ⏳ Days 9–15 per `docs/progress.md`: search algorithms, independent
-  confirmation, CSV export, and CLI are **planned, not yet verified**. The
-  quick-start and CLI sections below describe the planned workflow.
+Implemented and covered by automated tests (CPU-only, no weights/network):
+dataset loading and annotation validation, the 12-family perturbation engine,
+baseline and perturbed evaluation (Benchmark and label-free Quick Mode),
+verified failure analysis, JSON/Markdown reports, an offline HTML gallery, the
+search objective, **Random Search, optional Optuna TPE, held-out multi-seed
+confirmation, search reports (JSON/Markdown/CSV), and a CLI**.
+
+Not verified here: a real YOLO model (no `ultralytics`/weights in the test
+environment; the detector wrapper is tested with a mocked model) and Python
+versions other than 3.14. Deferred: an automated random-vs-TPE comparison
+report, per-image failure CSV. See `docs/implementation-audit.md` for the full
+requirement table and `docs/progress.md` for the day-by-day log.
+
+## Quick start
+
+```powershell
+cd D:\FailureForge
+pip install -e ".[dev]"            # add ".[yolo]" for real inference, ".[optuna]" for TPE
+
+# Weight-free demo (rule-based stand-in detector, NOT a YOLO model)
+python examples\demo_search.py --out demo_out
+# -> demo_out\results\search.json / search.md / search_trials.csv /
+#    confirmation.* / failure_gallery.html
+
+# Dataset checks need no model
+python examples\make_demo_data.py --out demo_data
+failureforge validate-data --data demo_data\data.yaml
+failureforge list-perturbations
+```
+
+With your own detection checkpoint (`best.pt`) and a YOLO `data.yaml`:
+
+```powershell
+failureforge validate-data --data data.yaml
+failureforge evaluate --data data.yaml --weights best.pt --out-dir results
+failureforge perturb  --data data.yaml --weights best.pt --transform gaussian_blur --param radius=3 --gallery
+failureforge perturb  --data data.yaml --weights best.pt --transform darken --param factor=0.2 --mode quick
+failureforge search   --data data.yaml --weights best.pt --method random --budget 30 --metric f1 --gallery
+failureforge search   --config configs\default.yaml --method tpe        # needs the optuna extra
+```
+
+Outputs go to `--out-dir` (default `results/`): `baseline.json`; `perturb.json|md`;
+`search.json|md`, `search_trials.csv`; `confirmation.json|md`; `failure_gallery.html`
+(+ `images/`, `perturbed_images/`). Flags override `--config` values, which
+override defaults. `validate-data` exits 1 when the dataset is invalid; usage or
+input errors exit 2 with an `error:` message.
+
+How to read results: the search score is `baseline − perturbed` for one metric
+(larger = worse). Search scores are tuned on the discovery split; trust the
+**confirmation** table (disjoint holdout, fresh seeds) and its `std`.
+`--holdout-fraction 0` disables confirmation. Quick Mode reports prediction
+instability only, never accuracy. Details: `docs/search.md`, `docs/objective.md`,
+`docs/failure-analysis.md`.
+
+## Search (Days 9–12)
+
+```python
+from failureforge.dataset import YoloDataset
+from failureforge.search import SearchSpace, run_random_search, confirm_trials, write_search_report
+
+ds = YoloDataset.from_config("data.yaml")
+discovery, holdout = ds.partition(0.3, seed=123)
+space = SearchSpace.default(include=["gaussian_blur", "darken", "rotation"])
+result = run_random_search(det, discovery, budget=20, seed=0, space=space)
+confirmation = confirm_trials(det, holdout, result.trials, top_k=3, n_seeds=3)
+write_search_report(result, "results", confirmation)
+```
+
+Invalid and errored trials are listed but never ranked or scored as zero. See
+`docs/search.md`.
 
 ## Search objective (Day 8)
 
@@ -204,34 +222,10 @@ rejected with an error. Tests: `pytest tests/test_detector.py tests/test_project
 ```powershell
 cd D:\FailureForge
 pip install -e .
-# optional extras:
 pip install -e ".[optuna]"   # TPE search
-pip install -e ".[yolo]"      # Ultralytics YOLO inference
-pip install -e ".[dev]"       # tests + optuna
+pip install -e ".[yolo]"     # Ultralytics YOLO inference
+pip install -e ".[dev]"      # tests + optuna
 ```
-
-## Planned quick-start (not yet working; CLI is Day 13)
-
-```powershell
-# 1. create a tiny demo dataset
-python examples\make_demo_data.py --out data
-# 2. validate
-failureforge validate-data --images data\images --labels data\labels
-# 3. baseline evaluate (DummyDetector via no --weights)
-failureforge evaluate --images data\images --labels data\labels --output results\baseline.json
-# 4. search (random + TPE) with confirmation split
-failureforge search --images data\images --labels data\labels --method both --budget 10 --output-dir results
-# 5. regenerate report
-failureforge report --input-dir results --output results\report.md
-```
-
-## Planned CLI (Day 13; not implemented)
-
-- `failureforge validate-data --images ... --labels ...`
-- `failureforge evaluate --images ... --labels ... [--weights best.pt] [--iou 0.5]`
-- `failureforge search --method {random,tpe,both} --budget N --seed S [--weights best.pt]`
-- `failureforge report --input-dir results --output results/report.md`
-- Every command supports `--help`.
 
 ## Testing
 
@@ -240,7 +234,7 @@ pytest -q
 ```
 
 The suite is CPU-only and uses synthetic fixtures and mocked detectors (no
-weights, downloads, or network). Current status: **553 passed**.
+weights, downloads, or network). Current status: see `docs/progress.md`.
 
 ## Limitations
 
@@ -248,3 +242,7 @@ weights, downloads, or network). Current status: **553 passed**.
 - Evaluates a given detector; does not enumerate all real-world failures.
 - Single-seed comparisons are noisy — run multiple seeds.
 - No fabricated benchmarks are included; run the pipeline to get real numbers.
+- Search uses one metric at a time, uniform sampling, and sequential trials; a
+  random-vs-TPE comparison must be run manually.
+- `perturb --mode quick` still needs the standard `labels/` directory to load the
+  dataset, but never reads label files.
