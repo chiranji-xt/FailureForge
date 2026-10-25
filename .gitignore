@@ -13,3 +13,5 @@ results/gallery/
 *.onnx
 data/images/
 data/labels/
+build/
+dist/

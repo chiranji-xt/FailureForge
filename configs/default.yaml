@@ -1,0 +1,30 @@
+# FailureForge example configuration. Every key is optional; CLI flags override it.
+# Use:  failureforge search --config configs/default.yaml
+dataset:
+  data: data/data.yaml        # YOLO data.yaml (the test split is preferred, then val)
+  split: null                 # explicit split name; never defaults to train
+  allow_missing_labels: false
+
+detector:
+  weights: null               # path to an existing detection checkpoint, e.g. best.pt
+  conf: 0.25
+  imgsz: 640
+  device: cpu
+
+evaluation:
+  iou_threshold: 0.5
+
+search:
+  method: random              # random | tpe (tpe needs: pip install "failureforge[optuna]")
+  budget: 20
+  seed: 0
+  metric: f1                  # precision | recall | f1 | map50 (score = baseline - perturbed)
+  transforms: null            # e.g. [gaussian_blur, rotation]; null = all searchable
+  holdout_fraction: 0.3       # images reserved for confirmation; 0 disables confirmation
+  partition_seed: 123
+  confirm_top: 3
+  confirm_seeds: 3
+  confirm_seed: 1000
+
+output:
+  dir: results
