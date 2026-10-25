@@ -204,7 +204,6 @@ def validate_label_file(
     if not (0.0 < float(overlap_iou_threshold) <= 1.0):
         raise ValueError("overlap_iou_threshold must be in (0, 1]")
     path = Path(label_path)
-    label = str(path)
     image = image_name or path.name
     names = list(class_names) if class_names is not None else []
     issues: list[AnnotationIssue] = []

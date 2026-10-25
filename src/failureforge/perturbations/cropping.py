@@ -8,7 +8,6 @@ that is cropped away or becomes smaller than ``MIN_BOX_SIDE_PX``.
 from __future__ import annotations
 
 import numpy as np
-from PIL import Image
 
 from .base import Context, ParamSpec, Transform, bgr_to_pil, pil_to_bgr, register
 from .boxops import map_boxes

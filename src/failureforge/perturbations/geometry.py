@@ -9,7 +9,7 @@ import numpy as np
 
 from .base import Context, ParamSpec, Transform, register
 from .boxops import (
-    apply_affine, homography, invert_affine, perspective_from_homography,
+    apply_affine, homography, perspective_from_homography,
     rotation_forward, scale_forward, translate_forward, warp_affine,
     warp_perspective,
 )

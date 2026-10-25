@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 
 from .base import (
-    Context, ParamSpec, PerturbationError, Transform, bgr_to_pil, pil_to_bgr,
+    Context, ParamSpec, Transform, pil_to_bgr,
     register,
 )
 

@@ -14,7 +14,6 @@ from failureforge.detector import Detections
 from failureforge.evaluation import (
     PerturbedResult,
     QuickModeResult,
-    evaluate_perturbed,
     quick_mode,
 )
 from failureforge.evaluator import evaluate_baseline
