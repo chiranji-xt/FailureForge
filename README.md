@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/readme-banner.svg" alt="FailureForge" width="100%"/>
+</p>
+
 # FailureForge
 
 Reproducible robustness testing for YOLO object detectors. Evaluates a detector
