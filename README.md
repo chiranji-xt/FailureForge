@@ -21,7 +21,8 @@ requirement table and `docs/progress.md` for the day-by-day log.
 ## Quick start
 
 ```powershell
-cd D:\FailureForge
+git clone https://github.com/chiranji-xt/FailureForge.git
+cd FailureForge
 pip install -e ".[dev]"            # add ".[yolo]" for real inference, ".[optuna]" for TPE
 
 # Weight-free demo (rule-based stand-in detector, NOT a YOLO model)
@@ -220,7 +221,8 @@ rejected with an error. Tests: `pytest tests/test_detector.py tests/test_project
 ## Installation (Windows PowerShell)
 
 ```powershell
-cd D:\FailureForge
+git clone https://github.com/chiranji-xt/FailureForge.git
+cd FailureForge
 pip install -e .
 pip install -e ".[optuna]"   # TPE search
 pip install -e ".[yolo]"     # Ultralytics YOLO inference
